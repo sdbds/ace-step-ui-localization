@@ -19,9 +19,9 @@
 </p>
 
 <p align="center">
+  <a href="#-demo">Demo</a> •
   <a href="#-why-ace-step-ui">Why ACE-Step</a> •
   <a href="#-features">Features</a> •
-  <a href="#-demo">Demo</a> •
   <a href="#-installation">Installation</a> •
   <a href="#-usage">Usage</a> •
   <a href="#-contributing">Contributing</a>
@@ -34,6 +34,24 @@
   <img src="https://img.shields.io/badge/SQLite-Local_First-003B57?style=flat-square&logo=sqlite" alt="SQLite">
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
   <img src="https://img.shields.io/github/stars/fspecii/ace-step-ui?style=flat-square" alt="Stars">
+</p>
+
+---
+
+## 🎬 Demo
+
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=8zg0Xi36qGc">
+    <img src="https://img.shields.io/badge/▶_Watch_Full_Demo-YouTube-FF0000?style=for-the-badge&logo=youtube" alt="Watch Demo on YouTube">
+  </a>
+</p>
+
+<p align="center">
+  <img src="docs/demo.gif" alt="ACE-Step UI - Open Source Suno Alternative" width="100%">
+</p>
+
+<p align="center">
+  <em>Generate professional AI music with a Spotify-like interface - 100% free and local</em>
 </p>
 
 ---
@@ -58,18 +76,6 @@
 - **Runs locally** - no internet required after setup
 - **Open source** - inspect, modify, improve
 - **Active development** - constant improvements
-
----
-
-## 🎬 Demo
-
-<p align="center">
-  <img src="docs/demo.gif" alt="ACE-Step UI - Open Source Suno Alternative" width="100%">
-</p>
-
-<p align="center">
-  <em>Generate professional AI music with a Spotify-like interface - 100% free and local</em>
-</p>
 
 ---
 
