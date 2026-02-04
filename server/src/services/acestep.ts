@@ -92,7 +92,7 @@ async function isApiAvailable(): Promise<boolean> {
 
       if (response.ok) {
         const data = await response.json();
-        apiAvailableCache = data.status === 'ok' || data.healthy === true;
+        apiAvailableCache = data.status === 'ok' || data.healthy === true || data.data?.status === 'ok';
         console.log(`[ACE-Step] API available at ${ACESTEP_API}: ${apiAvailableCache}`);
         return apiAvailableCache;
       }
@@ -133,6 +133,10 @@ async function submitToApi(params: GenerationParams): Promise<{ taskId: string }
     vocal_language: params.vocalLanguage || 'en',
     use_random_seed: params.randomSeed !== false,
     shift: params.shift ?? 3.0,
+    thinking: params.thinking ?? false, // Respect frontend choice, default false for GPU compatibility
+    use_cot_caption: false, // Explicitly disable CoT features that require LLM
+    use_cot_language: false, // Explicitly disable CoT features that require LLM
+    use_cot_metas: false, // Explicitly disable CoT features that require LLM
   };
 
   if (params.bpm && params.bpm > 0) body.bpm = params.bpm;
@@ -148,13 +152,16 @@ async function submitToApi(params: GenerationParams): Promise<{ taskId: string }
   if (params.repaintingEnd !== undefined && params.repaintingEnd > 0) body.repainting_end = params.repaintingEnd;
   if (params.audioCoverStrength !== undefined && params.audioCoverStrength !== 1.0) body.audio_cover_strength = params.audioCoverStrength;
   if (params.instruction) body.instruction = params.instruction;
-  if (params.thinking) body.thinking = true;
-  if (params.lmTemperature !== undefined) body.lm_temperature = params.lmTemperature;
-  if (params.lmCfgScale !== undefined) body.lm_cfg_scale = params.lmCfgScale;
-  if (params.lmTopK !== undefined && params.lmTopK > 0) body.lm_top_k = params.lmTopK;
-  if (params.lmTopP !== undefined) body.lm_top_p = params.lmTopP;
-  if (params.useCotCaption !== undefined) body.use_cot_caption = params.useCotCaption;
-  if (params.useCotLanguage !== undefined) body.use_cot_language = params.useCotLanguage;
+  // LLM and CoT parameters only sent when thinking mode is enabled
+  if (params.thinking) {
+    if (params.lmTemperature !== undefined) body.lm_temperature = params.lmTemperature;
+    if (params.lmCfgScale !== undefined) body.lm_cfg_scale = params.lmCfgScale;
+    if (params.lmTopK !== undefined && params.lmTopK > 0) body.lm_top_k = params.lmTopK;
+    if (params.lmTopP !== undefined) body.lm_top_p = params.lmTopP;
+    if (params.useCotCaption !== undefined) body.use_cot_caption = params.useCotCaption;
+    if (params.useCotLanguage !== undefined) body.use_cot_language = params.useCotLanguage;
+    if (params.useCotMetas !== undefined) body.use_cot_metas = params.useCotMetas;
+  }
   if (params.useAdg) body.use_adg = true;
   if (params.cfgIntervalStart !== undefined && params.cfgIntervalStart > 0) body.cfg_interval_start = params.cfgIntervalStart;
   if (params.cfgIntervalEnd !== undefined && params.cfgIntervalEnd < 1.0) body.cfg_interval_end = params.cfgIntervalEnd;
@@ -187,7 +194,7 @@ async function submitToApi(params: GenerationParams): Promise<{ taskId: string }
   }
 
   const result = await response.json();
-  const taskId = result.data?.job_id || result.job_id;
+  const taskId = result.data?.task_id || result.data?.job_id || result.job_id || result.task_id;
   if (!taskId) {
     throw new Error('No task ID returned from API');
   }
@@ -260,7 +267,10 @@ async function pollApiResult(taskId: string, maxWaitMs = 600000): Promise<ApiTas
 
 // Download audio from API
 async function downloadAudioFromApi(audioPath: string, destPath: string): Promise<void> {
-  const url = `${ACESTEP_API}/v1/audio?path=${encodeURIComponent(audioPath)}`;
+  // Check if audioPath is already a relative URL (starts with /v1/audio)
+  const url = audioPath.startsWith('/v1/audio')
+    ? `${ACESTEP_API}${audioPath}`
+    : `${ACESTEP_API}/v1/audio?path=${encodeURIComponent(audioPath)}`;
   const response = await fetch(url);
 
   if (!response.ok) {

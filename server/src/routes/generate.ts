@@ -26,6 +26,9 @@ const audioUpload = multer({
   fileFilter: (_req, file, cb) => {
     const allowedTypes = [
       'audio/mpeg',
+      'audio/mp3', // Alternative MIME type for MP3
+      'audio/mpeg3',
+      'audio/x-mpeg-3',
       'audio/wav',
       'audio/x-wav',
       'audio/flac',
@@ -35,10 +38,15 @@ const audioUpload = multer({
       'audio/ogg',
       'audio/webm',
     ];
-    if (allowedTypes.includes(file.mimetype)) {
+
+    // Also check file extension as fallback
+    const allowedExtensions = ['.mp3', '.wav', '.flac', '.m4a', '.aac', '.ogg', '.webm', '.opus'];
+    const fileExt = file.originalname.toLowerCase().match(/\.[^.]+$/)?.[0];
+
+    if (allowedTypes.includes(file.mimetype) || (fileExt && allowedExtensions.includes(fileExt))) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only common audio formats are allowed.'));
+      cb(new Error(`Invalid file type. Only common audio formats are allowed. Received: ${file.mimetype} (${file.originalname})`));
     }
   }
 });
