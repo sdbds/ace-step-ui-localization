@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, User as UserIcon, Palette, Info, Edit3, ExternalLink } from 'lucide-react';
+import { X, User as UserIcon, Palette, Info, Edit3, ExternalLink, Globe, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useI18n } from '../context/I18nContext';
 import { EditProfileModal } from './EditProfileModal';
 
 interface SettingsModalProps {
@@ -13,6 +14,7 @@ interface SettingsModalProps {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, theme, onToggleTheme, onNavigateToProfile }) => {
     const { user } = useAuth();
+    const { t, language, setLanguage } = useI18n();
     const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
     if (!isOpen || !user) {
@@ -36,7 +38,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, t
             >
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-zinc-200 dark:border-white/5">
-                    <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Settings</h2>
+                    <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">{t('settings')}</h2>
                     <button
                         onClick={onClose}
                         className="p-2 hover:bg-zinc-100 dark:hover:bg-white/5 rounded-full transition-colors"
@@ -59,7 +61,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, t
                             <div className="flex-1">
                                 <h3 className="text-xl font-bold text-zinc-900 dark:text-white">@{user.username}</h3>
                                 <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-1">
-                                    Member since {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                                    {t('memberSince')} {new Date(user.createdAt).toLocaleDateString(language === 'zh' ? 'zh-CN' : 'en-US', { month: 'long', year: 'numeric' })}
                                 </p>
                             </div>
                             <div className="flex gap-2">
@@ -71,7 +73,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, t
                                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
                                 >
                                     <Edit3 size={16} />
-                                    Edit Profile
+                                    {t('editProfile')}
                                 </button>
                                 <button
                                     onClick={() => {
@@ -81,7 +83,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, t
                                     className="flex items-center gap-2 px-4 py-2 bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-white rounded-lg text-sm font-medium hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors"
                                 >
                                     <ExternalLink size={16} />
-                                    View Profile
+                                    {t('viewProfile')}
                                 </button>
                             </div>
                         </div>
@@ -91,12 +93,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, t
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
                             <UserIcon size={20} />
-                            <h3 className="font-semibold">Account</h3>
+                            <h3 className="font-semibold">{t('account')}</h3>
                         </div>
                         <div className="pl-7 space-y-3">
                             <div>
-                                <label className="text-sm text-zinc-500 dark:text-zinc-400">Username</label>
+                                <label className="text-sm text-zinc-500 dark:text-zinc-400">{t('username')}</label>
                                 <p className="text-zinc-900 dark:text-white font-medium">@{user.username}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Language Section */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
+                            <Globe size={20} />
+                            <h3 className="font-semibold">{t('language')}</h3>
+                        </div>
+                        <div className="pl-7 space-y-3">
+                            <div className="relative">
+                                <select
+                                    value={language}
+                                    onChange={(e) => setLanguage(e.target.value as 'en' | 'zh' | 'ja' | 'ko')}
+                                    className="w-full appearance-none py-3 px-4 pr-10 rounded-lg border-2 border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-medium transition-colors hover:border-zinc-400 dark:hover:border-zinc-600 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-500 cursor-pointer"
+                                >
+                                    <option value="en">{t('english')}</option>
+                                    <option value="zh">{t('chinese')}</option>
+                                    <option value="ja">{t('japaneseLanguage')}</option>
+                                    <option value="ko">{t('koreanLanguage')}</option>
+                                </select>
+                                <ChevronDown
+                                    size={20}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none"
+                                />
                             </div>
                         </div>
                     </div>
@@ -105,7 +133,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, t
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
                             <Palette size={20} />
-                            <h3 className="font-semibold">Appearance</h3>
+                            <h3 className="font-semibold">{t('appearance')}</h3>
                         </div>
                         <div className="pl-7 space-y-3">
                             <div className="flex gap-3">
@@ -116,7 +144,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, t
                                             : 'border-zinc-300 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-600'
                                         }`}
                                 >
-                                    Light
+                                    {t('light')}
                                 </button>
                                 <button
                                     onClick={theme === 'light' ? onToggleTheme : undefined}
@@ -125,7 +153,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, t
                                             : 'border-zinc-300 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-600'
                                         }`}
                                 >
-                                    Dark
+                                    {t('dark')}
                                 </button>
                             </div>
                         </div>
@@ -135,27 +163,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, t
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 text-zinc-900 dark:text-white">
                             <Info size={20} />
-                            <h3 className="font-semibold">About</h3>
+                            <h3 className="font-semibold">{t('about')}</h3>
                         </div>
                         <div className="pl-7 space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
-                            <p>Version 1.0.0</p>
-                            <p>ACE-Step UI - Local AI Music Generator</p>
+                            <p>{t('version')} 1.0.0</p>
+                            <p>ACE-Step UI - {t('localAIMusicGenerator')}</p>
                             <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">
-                                Powered by ACE-Step 1.5. Open source and free to use.
+                                {t('poweredBy')}
                             </p>
-                            <div className="pt-3 border-t border-zinc-200 dark:border-zinc-700/50 mt-4">
-                                <p className="text-zinc-900 dark:text-white font-medium mb-2">Created by Ambsd</p>
-                                <a
-                                    href="https://x.com/AmbsdOP"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
-                                >
-                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                                    </svg>
-                                    Follow @AmbsdOP
-                                </a>
+                            <div className="pt-3 border-t border-zinc-200 dark:border-zinc-700/50 mt-4 space-y-4">
+                                <div>
+                                    <p className="text-zinc-900 dark:text-white font-medium mb-2">{t('createdBy')}</p>
+                                    <a
+                                        href="https://x.com/AmbsdOP"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+                                    >
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                        </svg>
+                                        {t('follow')} @AmbsdOP
+                                    </a>
+                                </div>
+                                <div>
+                                    <p className="text-zinc-900 dark:text-white font-medium mb-2">{t('localizedBy')}</p>
+                                    <a
+                                        href="https://x.com/bdsqlsz"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg text-sm font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+                                    >
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                                        </svg>
+                                        {t('follow')} @bdsqlsz
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -167,7 +211,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, t
                         onClick={onClose}
                         className="px-6 py-2 bg-zinc-900 dark:bg-white text-white dark:text-black font-semibold rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
                     >
-                        Done
+                        {t('done')}
                     </button>
                 </div>
             </div>

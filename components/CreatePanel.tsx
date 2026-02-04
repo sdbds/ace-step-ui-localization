@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Sparkles, ChevronDown, Settings2, Trash2, Music2, Sliders, Dices, Hash, RefreshCw, Plus, Upload, Play, Pause } from 'lucide-react';
 import { GenerationParams, Song } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { useI18n } from '../context/I18nContext';
 import { generateApi } from '../services/api';
+import { MAIN_STYLES } from '../data/genres';
 
 interface ReferenceTrack {
   id: string;
@@ -44,35 +46,42 @@ const KEY_SIGNATURES = [
 
 const TIME_SIGNATURES = ['', '2/4', '3/4', '4/4', '6/8'];
 
-const VOCAL_LANGUAGES = [
-  { value: 'unknown', label: 'Auto / Instrumental' },
-  { value: 'en', label: 'English' },
-  { value: 'ja', label: 'Japanese' },
-  { value: 'zh', label: 'Chinese' },
-  { value: 'es', label: 'Spanish' },
-  { value: 'de', label: 'German' },
-  { value: 'fr', label: 'French' },
-  { value: 'pt', label: 'Portuguese' },
-  { value: 'ru', label: 'Russian' },
-  { value: 'it', label: 'Italian' },
-  { value: 'nl', label: 'Dutch' },
-  { value: 'pl', label: 'Polish' },
-  { value: 'tr', label: 'Turkish' },
-  { value: 'vi', label: 'Vietnamese' },
-  { value: 'cs', label: 'Czech' },
-  { value: 'fa', label: 'Persian' },
-  { value: 'id', label: 'Indonesian' },
-  { value: 'ko', label: 'Korean' },
-  { value: 'uk', label: 'Ukrainian' },
-  { value: 'hu', label: 'Hungarian' },
-  { value: 'ar', label: 'Arabic' },
-  { value: 'sv', label: 'Swedish' },
-  { value: 'ro', label: 'Romanian' },
-  { value: 'el', label: 'Greek' },
+const VOCAL_LANGUAGE_VALUES = [
+  { value: 'unknown', key: 'autoInstrumental' as const },
+  { value: 'en', key: 'english' as const },
+  { value: 'ja', key: 'japanese' as const },
+  { value: 'zh', key: 'chinese' as const },
+  { value: 'es', key: 'spanish' as const },
+  { value: 'de', key: 'german' as const },
+  { value: 'fr', key: 'french' as const },
+  { value: 'pt', key: 'portuguese' as const },
+  { value: 'ru', key: 'russian' as const },
+  { value: 'it', key: 'italian' as const },
+  { value: 'nl', key: 'dutch' as const },
+  { value: 'pl', key: 'polish' as const },
+  { value: 'tr', key: 'turkish' as const },
+  { value: 'vi', key: 'vietnamese' as const },
+  { value: 'cs', key: 'czech' as const },
+  { value: 'fa', key: 'persian' as const },
+  { value: 'id', key: 'indonesian' as const },
+  { value: 'ko', key: 'korean' as const },
+  { value: 'uk', key: 'ukrainian' as const },
+  { value: 'hu', key: 'hungarian' as const },
+  { value: 'ar', key: 'arabic' as const },
+  { value: 'sv', key: 'swedish' as const },
+  { value: 'ro', key: 'romanian' as const },
+  { value: 'el', key: 'greek' as const },
 ];
 
 export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerating, initialData }) => {
   const { isAuthenticated, token } = useAuth();
+  const { t } = useI18n();
+
+  // Randomly select 6 music tags from MAIN_STYLES
+  const musicTags = useMemo(() => {
+    const shuffled = [...MAIN_STYLES].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 6);
+  }, []);
 
   // Mode
   const [customMode, setCustomMode] = useState(true);
@@ -602,13 +611,13 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
               onClick={() => setCustomMode(false)}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${!customMode ? 'bg-white dark:bg-zinc-800 text-black dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'}`}
             >
-              Simple
+              {t('simple')}
             </button>
             <button
               onClick={() => setCustomMode(true)}
               className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${customMode ? 'bg-white dark:bg-zinc-800 text-black dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'}`}
             >
-              Custom
+              {t('custom')}
             </button>
           </div>
         </div>
@@ -619,12 +628,12 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
             {/* Song Description */}
             <div className="bg-white dark:bg-suno-card rounded-xl border border-zinc-200 dark:border-white/5 overflow-hidden">
               <div className="px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-white/5 bg-zinc-50 dark:bg-white/5">
-                Describe Your Song
+                {t('describeYourSong')}
               </div>
               <textarea
                 value={songDescription}
                 onChange={(e) => setSongDescription(e.target.value)}
-                placeholder="A happy pop song about summer adventures with friends..."
+                placeholder={t('songDescriptionPlaceholder')}
                 className="w-full h-32 bg-transparent p-3 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none resize-none"
               />
             </div>
@@ -632,15 +641,15 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
             {/* Vocal Language (Simple) */}
             <div className="bg-white dark:bg-suno-card rounded-xl border border-zinc-200 dark:border-white/5 overflow-hidden">
               <div className="px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-white/5 bg-zinc-50 dark:bg-white/5">
-                Vocal Language
+                {t('vocalLanguage')}
               </div>
               <select
                 value={vocalLanguage}
                 onChange={(e) => setVocalLanguage(e.target.value)}
                 className="w-full bg-transparent p-3 text-sm text-zinc-900 dark:text-white focus:outline-none"
               >
-                {VOCAL_LANGUAGES.map(lang => (
-                  <option key={lang.value} value={lang.value}>{lang.label}</option>
+                {VOCAL_LANGUAGE_VALUES.map(lang => (
+                  <option key={lang.value} value={lang.value}>{t(lang.key)}</option>
                 ))}
               </select>
             </div>
@@ -649,15 +658,15 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
             <div className="bg-white dark:bg-suno-card rounded-xl border border-zinc-200 dark:border-white/5 p-4 space-y-4">
               <h3 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide flex items-center gap-2">
                 <Sliders size={14} />
-                Quick Settings
+                {t('quickSettings')}
               </h3>
 
               {/* Duration */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Duration</label>
+                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('duration')}</label>
                   <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">
-                    {duration === -1 ? 'Auto' : `${duration}s`}
+                    {duration === -1 ? t('auto') : `${duration}${t('seconds')}`}
                   </span>
                 </div>
                 <input
@@ -693,7 +702,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
               {/* Key & Time Signature */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Key</label>
+                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('key')}</label>
                   <select
                     value={keyScale}
                     onChange={(e) => setKeyScale(e.target.value)}
@@ -706,7 +715,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Time</label>
+                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('time')}</label>
                   <select
                     value={timeSignature}
                     onChange={(e) => setTimeSignature(e.target.value)}
@@ -723,7 +732,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
               {/* Variations */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Variations</label>
+                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('variations')}</label>
                   <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">{batchSize}</span>
                 </div>
                 <input
@@ -735,7 +744,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                   onChange={(e) => setBatchSize(Number(e.target.value))}
                   className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
                 />
-                <p className="text-[10px] text-zinc-500">Number of song variations to generate</p>
+                <p className="text-[10px] text-zinc-500">{t('numberOfVariations')}</p>
               </div>
             </div>
           </div>
@@ -753,7 +762,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
               {/* Header with Audio label and tabs */}
               <div className="px-3 py-2.5 border-b border-zinc-100 dark:border-white/5 bg-zinc-50 dark:bg-white/[0.02]">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Audio</span>
+                  <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">{t('audio')}</span>
                   <div className="flex items-center gap-1 bg-zinc-200/50 dark:bg-black/30 rounded-lg p-0.5">
                     <button
                       type="button"
@@ -764,7 +773,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                           : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                       }`}
                     >
-                      Reference
+                      {t('reference')}
                     </button>
                     <button
                       type="button"
@@ -775,7 +784,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                           : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                       }`}
                     >
-                      Cover
+                      {t('cover')}
                     </button>
                   </div>
                 </div>
@@ -894,28 +903,25 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                   <button
                     type="button"
                     onClick={() => openAudioModal(audioTab)}
-                    className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-medium bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-white/10 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 px-3 py-2 text-xs font-medium transition-colors border border-zinc-200 dark:border-white/5"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
                     </svg>
-                    {audioTab === 'reference' ? 'From library' : 'From library'}
+                    {t('fromLibrary')}
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      if (audioTab === 'reference') {
-                        referenceInputRef.current?.click();
-                      } else {
-                        sourceInputRef.current?.click();
-                      }
+                      const input = audioTab === 'reference' ? referenceInputRef.current : sourceInputRef.current;
+                      input?.click();
                     }}
-                    className="flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-medium bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-white/10 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 px-3 py-2 text-xs font-medium transition-colors border border-zinc-200 dark:border-white/5"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                     </svg>
-                    Upload
+                    {t('upload')}
                   </button>
                 </div>
               </div>
@@ -929,8 +935,8 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
             >
               <div className="flex items-center justify-between px-3 py-2.5 bg-zinc-50 dark:bg-white/5 border-b border-zinc-100 dark:border-white/5 flex-shrink-0">
                 <div>
-                  <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Lyrics</span>
-                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">Leave empty for instrumental or toggle below</p>
+                  <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">{t('lyrics')}</span>
+                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">{t('leaveLyricsEmpty')}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -941,7 +947,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                         : 'bg-white dark:bg-suno-card border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/10'
                     }`}
                   >
-                    {instrumental ? 'Instrumental' : 'Vocal'}
+                    {instrumental ? t('instrumental') : t('vocal')}
                   </button>
                   <button
                     className={`p-1.5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded transition-colors ${isFormatting ? 'text-pink-500 animate-pulse' : 'text-zinc-500 hover:text-black dark:hover:text-white'}`}
@@ -963,7 +969,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                 disabled={instrumental}
                 value={lyrics}
                 onChange={(e) => setLyrics(e.target.value)}
-                placeholder={instrumental ? "Instrumental mode - no lyrics needed" : "[Verse]\nYour lyrics here...\n\n[Chorus]\nThe catchy part..."}
+                placeholder={instrumental ? t('instrumental') + ' mode' : t('lyricsPlaceholder')}
                 className={`w-full bg-transparent p-3 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none resize-none font-mono leading-relaxed ${instrumental ? 'opacity-30 cursor-not-allowed' : ''}`}
                 style={{ height: `${lyricsHeight}px` }}
               />
@@ -980,8 +986,8 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
             <div className="bg-white dark:bg-suno-card rounded-xl border border-zinc-200 dark:border-white/5 overflow-hidden transition-colors group focus-within:border-zinc-400 dark:focus-within:border-white/20">
               <div className="flex items-center justify-between px-3 py-2.5 bg-zinc-50 dark:bg-white/5 border-b border-zinc-100 dark:border-white/5">
                 <div>
-                  <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Style of Music</span>
-                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">Genre, mood, instruments, vibe</p>
+                  <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">{t('styleOfMusic')}</span>
+                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">{t('genreMoodInstruments')}</p>
                 </div>
                 <button
                   className={`p-1.5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded transition-colors ${isFormatting ? 'text-pink-500 animate-pulse' : 'text-zinc-500 hover:text-black dark:hover:text-white'}`}
@@ -995,11 +1001,11 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
               <textarea
                 value={style}
                 onChange={(e) => setStyle(e.target.value)}
-                placeholder="e.g. upbeat pop rock, emotional ballad, 90s hip hop"
+                placeholder={t('stylePlaceholder')}
                 className="w-full h-20 bg-transparent p-3 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none resize-none"
               />
               <div className="px-3 pb-3 flex flex-wrap gap-2">
-                {['Pop', 'Rock', 'Electronic', 'Hip Hop', 'Jazz', 'Classical'].map(tag => (
+                {musicTags.map(tag => (
                   <button
                     key={tag}
                     onClick={() => setStyle(prev => prev ? `${prev}, ${tag}` : tag)}
@@ -1014,13 +1020,13 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
             {/* Title Input */}
             <div className="bg-white dark:bg-suno-card rounded-xl border border-zinc-200 dark:border-white/5 overflow-hidden">
               <div className="px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-white/5 bg-zinc-50 dark:bg-white/5">
-                Title
+                {t('title')}
               </div>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Name your song"
+                placeholder={t('nameSong')}
                 className="w-full bg-transparent p-3 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none"
               />
             </div>
@@ -1034,7 +1040,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
             <div className="flex items-center justify-between px-1 py-2">
               <div className="flex items-center gap-2">
                 <Music2 size={14} className="text-zinc-500" />
-                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Instrumental</span>
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{t('instrumental')}</span>
               </div>
               <button
                 onClick={() => setInstrumental(!instrumental)}
@@ -1050,15 +1056,15 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide px-1">
-                  Vocal Language
+                  {t('vocalLanguage')}
                 </label>
                 <select
                   value={vocalLanguage}
                   onChange={(e) => setVocalLanguage(e.target.value)}
                   className="w-full bg-white dark:bg-suno-card border border-zinc-200 dark:border-white/5 rounded-lg px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none"
                 >
-                  {VOCAL_LANGUAGES.map(lang => (
-                    <option key={lang.value} value={lang.value}>{lang.label}</option>
+                  {VOCAL_LANGUAGE_VALUES.map(lang => (
+                    <option key={lang.value} value={lang.value}>{t(lang.key)}</option>
                   ))}
                 </select>
               </div>
@@ -1070,15 +1076,15 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
         <div className="bg-white dark:bg-suno-card rounded-xl border border-zinc-200 dark:border-white/5 p-4 space-y-4">
           <h3 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide flex items-center gap-2">
             <Sliders size={14} />
-            Music Parameters
+            {t('musicParameters')}
           </h3>
 
           {/* BPM */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">BPM</label>
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('bpm')}</label>
               <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">
-                {bpm === 0 ? 'Auto' : bpm}
+                {bpm === 0 ? t('auto') : bpm}
               </span>
             </div>
             <input
@@ -1091,7 +1097,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
               className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
             />
             <div className="flex justify-between text-[10px] text-zinc-500">
-              <span>Auto</span>
+              <span>{t('auto')}</span>
               <span>300</span>
             </div>
           </div>
@@ -1134,7 +1140,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
         >
           <div className="flex items-center gap-2">
             <Settings2 size={16} className="text-zinc-500" />
-            <span>Advanced Settings</span>
+            <span>{t('advancedSettings')}</span>
           </div>
           <ChevronDown size={16} className={`text-zinc-500 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
         </button>
@@ -1145,9 +1151,9 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
             {/* Duration */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Duration</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('duration')}</label>
                 <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">
-                  {duration === -1 ? 'Auto' : `${duration}s`}
+                  {duration === -1 ? t('auto') : `${duration}${t('seconds')}`}
                 </span>
               </div>
               <input
@@ -1160,15 +1166,15 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                 className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
               />
               <div className="flex justify-between text-[10px] text-zinc-500">
-                <span>Auto</span>
-                <span>4 min</span>
+                <span>{t('auto')}</span>
+                <span>4 {t('min')}</span>
               </div>
             </div>
 
             {/* Batch Size */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Batch Size (Variations)</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('batchSize')}</label>
                 <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">{batchSize}</span>
               </div>
               <input
@@ -1180,15 +1186,15 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                 onChange={(e) => setBatchSize(Number(e.target.value))}
                 className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
               />
-              <p className="text-[10px] text-zinc-500">Number of song variations to generate</p>
+              <p className="text-[10px] text-zinc-500">{t('numberOfVariations')}</p>
             </div>
 
             {/* Bulk Generate */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Bulk Generate</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('bulkGenerate')}</label>
                 <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">
-                  {bulkCount} {bulkCount === 1 ? 'job' : 'jobs'}
+                  {bulkCount} {t(bulkCount === 1 ? 'job' : 'jobs')}
                 </span>
               </div>
               <div className="flex items-center gap-1">
@@ -1206,13 +1212,13 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-zinc-500">Queue multiple independent generation jobs with same settings</p>
+              <p className="text-[10px] text-zinc-500">{t('queueMultipleJobs')}</p>
             </div>
 
             {/* Inference Steps */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Inference Steps</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('inferenceSteps')}</label>
                 <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">{inferenceSteps}</span>
               </div>
               <input
@@ -1224,13 +1230,13 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                 onChange={(e) => setInferenceSteps(Number(e.target.value))}
                 className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
               />
-              <p className="text-[10px] text-zinc-500">More steps = better quality, slower (8 recommended for turbo)</p>
+              <p className="text-[10px] text-zinc-500">{t('moreStepsBetterQuality')}</p>
             </div>
 
             {/* Guidance Scale */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Guidance Scale</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('guidanceScale')}</label>
                 <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">{guidanceScale.toFixed(1)}</span>
               </div>
               <input
@@ -1242,31 +1248,31 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                 onChange={(e) => setGuidanceScale(Number(e.target.value))}
                 className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
               />
-              <p className="text-[10px] text-zinc-500">How closely to follow the prompt</p>
+              <p className="text-[10px] text-zinc-500">{t('howCloselyFollowPrompt')}</p>
             </div>
 
             {/* Audio Format & Inference Method */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Audio Format</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('audioFormat')}</label>
                 <select
                   value={audioFormat}
                   onChange={(e) => setAudioFormat(e.target.value as 'mp3' | 'flac')}
                   className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none"
                 >
-                  <option value="mp3">MP3 (smaller)</option>
-                  <option value="flac">FLAC (lossless)</option>
+                  <option value="mp3">{t('mp3Smaller')}</option>
+                  <option value="flac">{t('flacLossless')}</option>
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Inference Method</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('inferMethod')}</label>
                 <select
                   value={inferMethod}
                   onChange={(e) => setInferMethod(e.target.value as 'ode' | 'sde')}
                   className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none"
                 >
-                  <option value="ode">ODE (deterministic)</option>
-                  <option value="sde">SDE (stochastic)</option>
+                  <option value="ode">{t('odeDeterministic')}</option>
+                  <option value="sde">{t('sdeStochastic')}</option>
                 </select>
               </div>
             </div>
@@ -1276,7 +1282,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Dices size={14} className="text-zinc-500" />
-                  <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Seed</span>
+                  <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('seed')}</span>
                 </div>
                 <button
                   onClick={() => setRandomSeed(!randomSeed)}
@@ -1291,17 +1297,17 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                   type="number"
                   value={seed}
                   onChange={(e) => setSeed(Number(e.target.value))}
-                  placeholder="Enter fixed seed"
+                  placeholder={t('enterFixedSeed')}
                   disabled={randomSeed}
                   className={`flex-1 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none ${randomSeed ? 'opacity-40 cursor-not-allowed' : ''}`}
                 />
               </div>
-              <p className="text-[10px] text-zinc-500">{randomSeed ? 'Randomized every run (recommended)' : 'Fixed seed for reproducible results'}</p>
+              <p className="text-[10px] text-zinc-500">{randomSeed ? t('randomSeedRecommended') : t('fixedSeedReproducible')}</p>
             </div>
 
             {/* Thinking Toggle */}
             <div className="flex items-center justify-between py-2 border-t border-zinc-100 dark:border-white/5">
-              <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Thinking (CoT)</span>
+              <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('thinkingCot')}</span>
               <button
                 onClick={() => setThinking(!thinking)}
                 className={`w-10 h-5 rounded-full flex items-center transition-colors duration-200 px-0.5 border border-zinc-200 dark:border-white/5 ${thinking ? 'bg-pink-600' : 'bg-zinc-300 dark:bg-black/40'}`}
@@ -1313,7 +1319,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
             {/* Shift */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Shift</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('shift')}</label>
                 <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">{shift.toFixed(1)}</span>
               </div>
               <input
@@ -1325,12 +1331,12 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                 onChange={(e) => setShift(Number(e.target.value))}
                 className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
               />
-              <p className="text-[10px] text-zinc-500">Timestep shift for base models (not effective for turbo)</p>
+              <p className="text-[10px] text-zinc-500">{t('timestepShiftForBase')}</p>
             </div>
 
             {/* Divider */}
             <div className="border-t border-zinc-200 dark:border-white/10 pt-4">
-              <p className="text-[10px] text-zinc-500 uppercase tracking-wide font-bold mb-3">Expert Controls</p>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-wide font-bold mb-3">{t('expertControls')}</p>
             </div>
 
             {uploadError && (
@@ -1345,8 +1351,8 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
               <div className="flex items-center gap-2">
                 <Music2 size={16} className="text-zinc-500" />
                 <div className="flex flex-col items-start">
-                  <span>LM Parameters</span>
-                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-normal">Control lyric generation + creativity</span>
+                  <span>{t('lmParameters')}</span>
+                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-normal">{t('controlLyricGeneration')}</span>
                 </div>
               </div>
               <ChevronDown size={16} className={`text-zinc-500 transition-transform ${showLmParams ? 'rotate-180' : ''}`} />
@@ -1357,7 +1363,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                 {/* LM Temperature */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">LM Temperature</label>
+                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('lmTemperature')}</label>
                     <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">{lmTemperature.toFixed(2)}</span>
                   </div>
                   <input
@@ -1369,13 +1375,13 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                     onChange={(e) => setLmTemperature(Number(e.target.value))}
                     className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
                   />
-                  <p className="text-[10px] text-zinc-500">Higher = more random (0-2)</p>
+                  <p className="text-[10px] text-zinc-500">{t('higherMoreRandom')}</p>
                 </div>
 
                 {/* LM CFG Scale */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">LM CFG Scale</label>
+                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('lmCfgScale')}</label>
                     <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">{lmCfgScale.toFixed(1)}</span>
                   </div>
                   <input
@@ -1387,14 +1393,14 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                     onChange={(e) => setLmCfgScale(Number(e.target.value))}
                     className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
                   />
-                  <p className="text-[10px] text-zinc-500">1.0 = no CFG (1-3)</p>
+                  <p className="text-[10px] text-zinc-500">{t('noCfgScale')}</p>
                 </div>
 
                 {/* LM Top-K & Top-P */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Top-K</label>
+                      <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('topK')}</label>
                       <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">{lmTopK}</span>
                     </div>
                     <input
@@ -1409,7 +1415,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Top-P</label>
+                      <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('topP')}</label>
                       <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">{lmTopP.toFixed(2)}</span>
                     </div>
                     <input
@@ -1426,48 +1432,48 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
 
                 {/* LM Negative Prompt */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">LM Negative Prompt</label>
+                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('lmNegativePrompt')}</label>
                   <textarea
                     value={lmNegativePrompt}
                     onChange={(e) => setLmNegativePrompt(e.target.value)}
-                    placeholder="Things to avoid..."
+                    placeholder={t('thingsToAvoid')}
                     className="w-full h-16 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg p-2 text-xs text-zinc-900 dark:text-white focus:outline-none resize-none"
                   />
-                  <p className="text-[10px] text-zinc-500">Use when LM CFG Scale {">"} 1.0</p>
+                  <p className="text-[10px] text-zinc-500">{t('useWhenCfgScaleGreater')}</p>
                 </div>
               </div>
             )}
 
             <div className="space-y-1">
-              <h4 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Transform</h4>
-              <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Control how much the model follows the source audio.</p>
+              <h4 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">{t('transform')}</h4>
+              <p className="text-[11px] text-zinc-400 dark:text-zinc-500">{t('controlSourceAudio')}</p>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Audio Codes</label>
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('audioCodes')}</label>
               <textarea
                 value={audioCodes}
                 onChange={(e) => setAudioCodes(e.target.value)}
-                placeholder="Optional audio codes payload"
+                placeholder={t('optionalAudioCodes')}
                 className="w-full h-16 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg p-2 text-xs text-zinc-900 dark:text-white focus:outline-none resize-none"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Task Type</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('taskType')}</label>
                 <select
                   value={taskType}
                   onChange={(e) => setTaskType(e.target.value)}
                   className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none"
                 >
-                  <option value="text2music">Text → Music</option>
-                  <option value="audio2audio">Audio → Audio</option>
-                  <option value="cover">Cover</option>
-                  <option value="repaint">Repaint</option>
+                  <option value="text2music">{t('textToMusic')}</option>
+                  <option value="audio2audio">{t('audio2audio')}</option>
+                  <option value="cover">{t('coverTask')}</option>
+                  <option value="repaint">{t('repaintTask')}</option>
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Audio Cover Strength</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('audioCoverStrength')}</label>
                 <input
                   type="number"
                   step="0.05"
@@ -1482,7 +1488,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Repainting Start</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('repaintingStart')}</label>
                 <input
                   type="number"
                   step="0.1"
@@ -1492,7 +1498,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Repainting End</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('repaintingEnd')}</label>
                 <input
                   type="number"
                   step="0.1"
@@ -1504,7 +1510,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Instruction</label>
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('instruction')}</label>
               <textarea
                 value={instruction}
                 onChange={(e) => setInstruction(e.target.value)}
@@ -1513,12 +1519,12 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
             </div>
 
             <div className="space-y-1">
-              <h4 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">Guidance</h4>
-              <p className="text-[11px] text-zinc-400 dark:text-zinc-500">Advanced CFG scheduling controls.</p>
+              <h4 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">{t('guidance')}</h4>
+              <p className="text-[11px] text-zinc-400 dark:text-zinc-500">{t('advancedCfgScheduling')}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">CFG Interval Start</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('cfgIntervalStart')}</label>
                 <input
                   type="number"
                   step="0.05"
@@ -1530,7 +1536,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">CFG Interval End</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('cfgIntervalEnd')}</label>
                 <input
                   type="number"
                   step="0.05"
@@ -1544,19 +1550,19 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Custom Timesteps</label>
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('customTimesteps')}</label>
               <input
                 type="text"
                 value={customTimesteps}
                 onChange={(e) => setCustomTimesteps(e.target.value)}
-                placeholder="e.g. 1,3,5,7"
+                placeholder={t('timestepsPlaceholder')}
                 className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Score Scale</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('scoreScale')}</label>
                 <input
                   type="number"
                   step="0.05"
@@ -1566,7 +1572,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">LM Batch Chunk Size</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('lmBatchChunkSize')}</label>
                 <input
                   type="number"
                   min="1"
@@ -1578,23 +1584,23 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Track Name</label>
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('trackName')}</label>
               <input
                 type="text"
                 value={trackName}
                 onChange={(e) => setTrackName(e.target.value)}
-                placeholder="Optional track name"
+                placeholder={t('optionalTrackName')}
                 className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Complete Track Classes</label>
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('completeTrackClasses')}</label>
               <input
                 type="text"
                 value={completeTrackClasses}
                 onChange={(e) => setCompleteTrackClasses(e.target.value)}
-                placeholder="class-a, class-b"
+                placeholder={t('trackClassesPlaceholder')}
                 className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
               />
             </div>
@@ -1602,43 +1608,43 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
             <div className="grid grid-cols-2 gap-3">
               <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                 <input type="checkbox" checked={useAdg} onChange={() => setUseAdg(!useAdg)} />
-                Use ADG
+                {t('useAdg')}
               </label>
               <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                 <input type="checkbox" checked={allowLmBatch} onChange={() => setAllowLmBatch(!allowLmBatch)} />
-                Allow LM Batch
+                {t('allowLmBatch')}
               </label>
               <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                 <input type="checkbox" checked={useCotMetas} onChange={() => setUseCotMetas(!useCotMetas)} />
-                Use CoT Metas
+                {t('useCotMetas')}
               </label>
               <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                 <input type="checkbox" checked={useCotCaption} onChange={() => setUseCotCaption(!useCotCaption)} />
-                Use CoT Caption
+                {t('useCotCaption')}
               </label>
               <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                 <input type="checkbox" checked={useCotLanguage} onChange={() => setUseCotLanguage(!useCotLanguage)} />
-                Use CoT Language
+                {t('useCotLanguage')}
               </label>
               <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                 <input type="checkbox" checked={autogen} onChange={() => setAutogen(!autogen)} />
-                Autogen
+                {t('autogen')}
               </label>
               <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                 <input type="checkbox" checked={constrainedDecodingDebug} onChange={() => setConstrainedDecodingDebug(!constrainedDecodingDebug)} />
-                Constrained Decoding Debug
+                {t('constrainedDecodingDebug')}
               </label>
               <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                 <input type="checkbox" checked={isFormatCaption} onChange={() => setIsFormatCaption(!isFormatCaption)} />
-                Format Caption
+                {t('formatCaption')}
               </label>
               <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                 <input type="checkbox" checked={getScores} onChange={() => setGetScores(!getScores)} />
-                Get Scores
+                {t('getScores')}
               </label>
               <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
                 <input type="checkbox" checked={getLrc} onChange={() => setGetLrc(!getLrc)} />
-                Get LRC (Lyrics)
+                {t('getLrcLyrics')}
               </label>
             </div>
           </div>
@@ -1865,12 +1871,16 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
         <button
           onClick={handleGenerate}
           className="w-full h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] bg-gradient-to-r from-orange-500 to-pink-600 text-white shadow-lg hover:brightness-110"
+          disabled={isGenerating || !isAuthenticated}
         >
           <Sparkles size={18} />
           <span>
-            {bulkCount > 1
-              ? `Create ${bulkCount} Jobs (${bulkCount * batchSize} tracks)`
-              : `Create${batchSize > 1 ? ` (${batchSize} variations)` : ''}`}
+            {isGenerating 
+              ? t('generating')
+              : bulkCount > 1
+                ? `${t('createButton')} ${bulkCount} ${t('jobs')} (${bulkCount * batchSize} ${t('variations')})`
+                : `${t('createButton')}${batchSize > 1 ? ` (${batchSize} ${t('variations')})` : ''}`
+            }
           </span>
         </button>
       </div>

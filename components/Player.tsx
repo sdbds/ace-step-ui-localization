@@ -3,6 +3,7 @@ import { Song } from '../types';
 import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, Download, Heart, MoreVertical, Volume2, VolumeX, Maximize2, Repeat1, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../context/ResponsiveContext';
+import { useI18n } from '../context/I18nContext';
 import { SongDropdownMenu } from './SongDropdownMenu';
 import { ShareModal } from './ShareModal';
 import { AlbumCover } from './AlbumCover';
@@ -56,6 +57,7 @@ export const Player: React.FC<PlayerProps> = ({
 }) => {
     const { user } = useAuth();
     const { isMobile } = useResponsive();
+    const { t } = useI18n();
     const progressBarRef = useRef<HTMLDivElement>(null);
     const fullscreenProgressRef = useRef<HTMLDivElement>(null);
     const [isHoveringVolume, setIsHoveringVolume] = useState(false);
@@ -125,7 +127,7 @@ export const Player: React.FC<PlayerProps> = ({
                         >
                             <ChevronDown size={28} />
                         </button>
-                        <span className="text-xs text-zinc-500 dark:text-white/50 uppercase tracking-wider">Now Playing</span>
+                        <span className="text-xs text-zinc-500 dark:text-white/50 uppercase tracking-wider">{t('nowPlaying')}</span>
                         <div className="w-11" />
                     </div>
 
@@ -259,7 +261,7 @@ export const Player: React.FC<PlayerProps> = ({
                         <button
                             onClick={handleDownload}
                             className="p-3 tap-highlight-none"
-                            title="Download Audio"
+                            title={t('downloadAudio')}
                         >
                             <Download size={20} />
                         </button>
@@ -379,7 +381,7 @@ export const Player: React.FC<PlayerProps> = ({
                     >
                         <ChevronDown size={28} />
                     </button>
-                    <span className="text-sm text-zinc-500 dark:text-white/50 uppercase tracking-wider font-medium">Now Playing</span>
+                    <span className="text-sm text-zinc-500 dark:text-white/50 uppercase tracking-wider font-medium">{t('nowPlaying')}</span>
                     <div className="w-11" />
                 </div>
 
@@ -516,7 +518,7 @@ export const Player: React.FC<PlayerProps> = ({
                                 <button
                                     onClick={handleDownload}
                                     className="p-3 rounded-full hover:bg-zinc-200 dark:hover:bg-white/10 transition-colors"
-                                    title="Download Audio"
+                                    title={t('downloadAudio')}
                                 >
                                     <Download size={20} />
                                 </button>
@@ -679,7 +681,7 @@ export const Player: React.FC<PlayerProps> = ({
                     <button
                         onClick={handleDownload}
                         className="p-1.5 lg:p-2 hover:bg-zinc-100 dark:hover:bg-white/10 rounded-full transition-colors hidden lg:block"
-                        title="Download Audio"
+                        title={t('downloadAudio')}
                     >
                         <Download size={18} />
                     </button>

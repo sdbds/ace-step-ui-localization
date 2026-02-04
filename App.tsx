@@ -15,13 +15,17 @@ import { Song, GenerationParams, View, Playlist } from './types';
 import { generateApi, songsApi, playlistsApi, getAudioUrl } from './services/api';
 import { useAuth } from './context/AuthContext';
 import { useResponsive } from './context/ResponsiveContext';
+import { I18nProvider, useI18n } from './context/I18nContext';
 import { List } from 'lucide-react';
 import { PlaylistDetail } from './components/PlaylistDetail';
 import { Toast, ToastType } from './components/Toast';
 import { SearchPage } from './components/SearchPage';
 
 
-export default function App() {
+function AppContent() {
+  // i18n
+  const { t } = useI18n();
+
   // Responsive
   const { isMobile, isDesktop } = useResponsive();
 
@@ -418,9 +422,9 @@ export default function App() {
       if (audio.error && audio.error.code !== 1) {
         console.error("Audio playback error:", audio.error);
         if (audio.error.code === 4) {
-          showToast('This song is no longer available.', 'error');
+          showToast(t('songNotAvailable'), 'error');
         } else {
-          showToast('Unable to play this song.', 'error');
+          showToast(t('unableToPlay'), 'error');
         }
       }
       setIsPlaying(false);
@@ -456,7 +460,7 @@ export default function App() {
         if (err instanceof Error && err.name !== 'AbortError') {
           console.error("Playback failed:", err);
           if (err.name === 'NotSupportedError') {
-            showToast('This song is no longer available.', 'error');
+            showToast(t('songNotAvailable'), 'error');
           }
           setIsPlaying(false);
         }
@@ -649,7 +653,7 @@ export default function App() {
           } else if (status.status === 'failed') {
             cleanupJob(job.jobId, tempId);
             console.error(`Job ${job.jobId} failed:`, status.error);
-            showToast(`Generation failed: ${status.error || 'Unknown error'}`, 'error');
+            showToast(`${t('generationFailed')}: ${status.error || 'Unknown error'}`, 'error');
           }
         } catch (pollError) {
           console.error(`Polling error for job ${job.jobId}:`, pollError);
@@ -666,7 +670,7 @@ export default function App() {
         if (activeJobsRef.current.has(job.jobId)) {
           console.warn(`Job ${job.jobId} timed out`);
           cleanupJob(job.jobId, tempId);
-          showToast('Generation timed out', 'error');
+          showToast(t('generationTimedOut'), 'error');
         }
       }, 600000);
 
@@ -678,7 +682,7 @@ export default function App() {
       if (activeJobsRef.current.size === 0) {
         setIsGenerating(false);
       }
-      showToast('Generation failed. Please try again.', 'error');
+      showToast(t('generationFailed'), 'error');
     }
   };
 
@@ -778,10 +782,10 @@ export default function App() {
         setSongToAddToPlaylist(null);
         playlistsApi.getMyPlaylists(token).then(r => setPlaylists(r.playlists));
       }
-      showToast('Playlist created successfully!');
+      showToast(t('playlistCreated'));
     } catch (error) {
       console.error('Create playlist error:', error);
-      showToast('Failed to create playlist', 'error');
+      showToast(t('failedToCreatePlaylist'), 'error');
     }
   };
 
@@ -795,11 +799,11 @@ export default function App() {
     try {
       await playlistsApi.addSong(playlistId, songToAddToPlaylist.id, token);
       setSongToAddToPlaylist(null);
-      showToast('Song added to playlist');
+      showToast(t('songAddedToPlaylist'));
       playlistsApi.getMyPlaylists(token).then(r => setPlaylists(r.playlists));
     } catch (error) {
       console.error('Add song error:', error);
-      showToast('Failed to add song to playlist', 'error');
+      showToast(t('failedToAddSong'), 'error');
     }
   };
 
@@ -969,7 +973,7 @@ export default function App() {
                 onClick={() => setMobileShowList(!mobileShowList)}
                 className="bg-zinc-800 text-white px-4 py-2 rounded-full shadow-lg border border-white/10 flex items-center gap-2 text-sm font-bold"
               >
-                {mobileShowList ? 'Create Song' : 'View List'}
+                {mobileShowList ? t('createSong') : t('viewList')}
                 <List size={16} />
               </button>
             </div>
@@ -1091,5 +1095,13 @@ export default function App() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <I18nProvider>
+      <AppContent />
+    </I18nProvider>
   );
 }

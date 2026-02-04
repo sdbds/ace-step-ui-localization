@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Song } from '../types';
+import { useI18n } from '../context/I18nContext';
 import {
     Video,
     Edit3,
@@ -72,6 +73,7 @@ export const SongDropdownMenu: React.FC<SongDropdownMenuProps> = ({
     onShare,
     onDelete
 }) => {
+    const { t } = useI18n();
     const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -170,24 +172,24 @@ export const SongDropdownMenu: React.FC<SongDropdownMenuProps> = ({
             {/* Creative Actions */}
             <MenuItem
                 icon={<Video size={14} />}
-                label="Create Video"
+                label={t('createVideo')}
                 onClick={() => handleAction(onCreateVideo)}
             />
             {isOwner && (
                 <MenuItem
                     icon={<Edit3 size={14} />}
-                    label="Edit Audio"
+                    label={t('editAudio')}
                     onClick={onEditAudio ? () => handleAction(onEditAudio) : handleEditAudio}
                 />
             )}
             <MenuItem
                 icon={<Layers size={14} />}
-                label="Extract Stems"
+                label={t('extractStems')}
                 onClick={onExtractStems ? () => handleAction(onExtractStems) : handleExtractStems}
             />
             <MenuItem
                 icon={<Repeat size={14} />}
-                label="Reuse Prompt"
+                label={t('reusePrompt')}
                 onClick={() => handleAction(onReusePrompt)}
             />
 
@@ -196,17 +198,17 @@ export const SongDropdownMenu: React.FC<SongDropdownMenuProps> = ({
             {/* Library Actions */}
             <MenuItem
                 icon={<ListPlus size={14} />}
-                label="Add to Playlist"
+                label={t('addToPlaylist')}
                 onClick={() => handleAction(onAddToPlaylist)}
             />
             <MenuItem
                 icon={<Download size={14} />}
-                label="Download"
+                label={t('download')}
                 onClick={onDownload ? () => handleAction(onDownload) : handleDownload}
             />
             <MenuItem
                 icon={<Share2 size={14} />}
-                label="Share"
+                label={t('share')}
                 onClick={() => handleAction(onShare)}
             />
 
@@ -216,7 +218,7 @@ export const SongDropdownMenu: React.FC<SongDropdownMenuProps> = ({
                     <MenuDivider />
                     <MenuItem
                         icon={<Trash2 size={14} />}
-                        label="Delete Song"
+                        label={t('deleteSong')}
                         onClick={() => handleAction(onDelete)}
                         danger
                     />

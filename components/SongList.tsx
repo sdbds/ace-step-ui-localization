@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Song } from '../types';
 import { Play, MoreHorizontal, Heart, ThumbsDown, ListPlus, Pause, Search, Filter, Check, Globe, Lock, Loader2, ThumbsUp, Share2, Video, Info, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useI18n } from '../context/I18nContext';
 import { SongDropdownMenu } from './SongDropdownMenu';
 import { ShareModal } from './ShareModal';
 import { AlbumCover } from './AlbumCover';
@@ -30,13 +31,6 @@ interface SongListProps {
 // Define Filter Types
 type FilterType = 'liked' | 'public' | 'private' | 'generating';
 
-const FILTERS: { id: FilterType; label: string; icon: React.ReactNode }[] = [
-    { id: 'liked', label: 'Liked', icon: <ThumbsUp size={16} /> },
-    { id: 'public', label: 'Public', icon: <Globe size={16} /> },
-    { id: 'private', label: 'Private', icon: <Lock size={16} /> },
-    { id: 'generating', label: 'Generating', icon: <Loader2 size={16} /> },
-];
-
 export const SongList: React.FC<SongListProps> = ({
     songs,
     currentSong,
@@ -54,10 +48,18 @@ export const SongList: React.FC<SongListProps> = ({
     onDelete
 }) => {
     const { user } = useAuth();
+    const { t } = useI18n();
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilters, setActiveFilters] = useState<Set<FilterType>>(new Set());
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const filterRef = useRef<HTMLDivElement>(null);
+
+    const FILTERS: { id: FilterType; label: string; icon: React.ReactNode }[] = [
+        { id: 'liked', label: t('liked'), icon: <ThumbsUp size={16} /> },
+        { id: 'public', label: t('public'), icon: <Globe size={16} /> },
+        { id: 'private', label: t('private'), icon: <Lock size={16} /> },
+        { id: 'generating', label: t('generatingStatus'), icon: <Loader2 size={16} /> }
+    ];
 
     // Close filter dropdown when clicking outside
     useEffect(() => {
@@ -122,7 +124,7 @@ export const SongList: React.FC<SongListProps> = ({
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search your songs..."
+                                placeholder={t('searchYourSongs')}
                                 className="w-full bg-zinc-100 dark:bg-[#121214] border border-zinc-200 dark:border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-zinc-400 dark:focus:border-white/20 placeholder-zinc-500 dark:placeholder-zinc-600 transition-colors"
                             />
                             <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-3 group-focus-within:text-black dark:group-focus-within:text-white transition-colors" />
@@ -140,14 +142,14 @@ export const SongList: React.FC<SongListProps> = ({
                     `}
                             >
                                 <Filter size={14} fill={activeFilters.size > 0 ? "currentColor" : "none"} />
-                                <span>Filters {activeFilters.size > 0 && `(${activeFilters.size})`}</span>
+                                <span>{t('filters')} {activeFilters.size > 0 && `(${activeFilters.size})`}</span>
                             </button>
 
                             {/* Filter Dropdown */}
                             {isFilterOpen && (
                                 <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-[#18181b] border border-zinc-200 dark:border-white/10 rounded-xl shadow-2xl overflow-hidden py-1 z-50 animate-in fade-in zoom-in-95 duration-100 origin-top-right">
                                     <div className="px-3 py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-                                        Refine By
+                                        {t('refineBy')}
                                     </div>
                                     {FILTERS.map(filter => (
                                         <button
@@ -185,12 +187,12 @@ export const SongList: React.FC<SongListProps> = ({
                             <div className="w-16 h-16 rounded-full bg-zinc-100 dark:bg-white/5 flex items-center justify-center">
                                 <Filter size={32} />
                             </div>
-                            <p className="font-medium">No songs match your filters.</p>
+                            <p className="font-medium">{t('noSongsMatchFilters')}</p>
                             <button
                                 onClick={() => { setActiveFilters(new Set()); setSearchQuery(''); }}
                                 className="text-pink-600 dark:text-pink-500 text-sm font-bold hover:underline"
                             >
-                                Clear filters
+                                {t('clearFilters')}
                             </button>
                         </div>
                     ) : (
