@@ -147,6 +147,7 @@
 
 ## ⚡ Quick Start
 
+### Linux / macOS
 ```bash
 # 1. Start ACE-Step API (in ACE-Step directory)
 cd /path/to/ACE-Step
@@ -155,6 +156,17 @@ uv run acestep-api --port 8001
 # 2. Start ACE-Step UI (in another terminal)
 cd ace-step-ui
 ./start.sh
+```
+
+### Windows
+```batch
+REM 1. Start ACE-Step API (in ACE-Step directory)
+cd C:\path\to\ACE-Step
+uv run acestep-api --port 8001
+
+REM 2. Start ACE-Step UI (in another terminal)
+cd ace-step-ui
+start.bat
 ```
 
 Open **http://localhost:3000** and start creating!
@@ -180,6 +192,7 @@ cd ..
 
 ### 2. Install ACE-Step UI (This Repository)
 
+#### Linux / macOS
 ```bash
 # Clone the UI
 git clone https://github.com/fspecii/ace-step-ui
@@ -189,7 +202,17 @@ cd ace-step-ui
 ./setup.sh
 ```
 
-**Or install manually:**
+#### Windows
+```batch
+REM Clone the UI
+git clone https://github.com/fspecii/ace-step-ui
+cd ace-step-ui
+
+REM Run setup script (installs all dependencies)
+setup.bat
+```
+
+#### Manual Installation (All Platforms)
 
 ```bash
 # Install frontend dependencies
@@ -201,7 +224,10 @@ npm install
 cd ..
 
 # Copy environment file
+# Linux/macOS:
 cp server/.env.example server/.env
+# Windows:
+copy server\.env.example server\.env
 ```
 
 ---
@@ -210,8 +236,15 @@ cp server/.env.example server/.env
 
 ### Step 1: Start ACE-Step API Server
 
+**Linux / macOS:**
 ```bash
 cd /path/to/ACE-Step
+uv run acestep-api --port 8001
+```
+
+**Windows:**
+```batch
+cd C:\path\to\ACE-Step
 uv run acestep-api --port 8001
 ```
 
@@ -219,9 +252,16 @@ Wait for "Application startup complete" before proceeding.
 
 ### Step 2: Start ACE-Step UI
 
+**Linux / macOS:**
 ```bash
 cd ace-step-ui
 ./start.sh
+```
+
+**Windows:**
+```batch
+cd ace-step-ui
+start.bat
 ```
 
 ### Step 3: Create Music!
