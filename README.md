@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>The Ultimate Open Source Suno Alternative</strong><br>
-  <em>Seamless integration with <a href="https://github.com/ace-step/ACE-Step">ACE-Step 1.5</a> - The Open Source AI Music Generation Model</em>
+  <em>Seamless integration with <a href="https://github.com/ace-step/ACE-Step-1.5">ACE-Step 1.5</a> - The Open Source AI Music Generation Model</em>
 </p>
 
 <p align="center">
@@ -128,7 +128,7 @@
 |-------|-------------|
 | **Frontend** | React 18, TypeScript, TailwindCSS, Vite |
 | **Backend** | Express.js, SQLite, better-sqlite3 |
-| **AI Engine** | [ACE-Step 1.5](https://github.com/ace-step/ACE-Step) |
+| **AI Engine** | [ACE-Step 1.5](https://github.com/ace-step/ACE-Step-1.5) |
 | **Audio Tools** | AudioMass, Demucs, FFmpeg |
 
 ---
@@ -178,9 +178,9 @@ Open **http://localhost:3000** and start creating!
 ### 1. Install ACE-Step (The AI Engine)
 
 ```bash
-# Clone ACE-Step - the open source Suno alternative
-git clone https://github.com/ace-step/ACE-Step
-cd ACE-Step
+# Clone ACE-Step 1.5 - the open source Suno alternative
+git clone https://github.com/ace-step/ACE-Step-1.5
+cd ACE-Step-1.5
 
 # Create virtual environment and install
 uv venv
@@ -385,7 +385,7 @@ This is a community-driven project and contributions are what make open source a
 
 ## 🙏 Credits
 
-- **[ACE-Step](https://github.com/ace-step/ACE-Step)** - The revolutionary open source AI music generation model
+- **[ACE-Step](https://github.com/ace-step/ACE-Step-1.5)** - The revolutionary open source AI music generation model
 - **[AudioMass](https://github.com/pkalogiros/AudioMass)** - Web audio editor
 - **[Demucs](https://github.com/facebookresearch/demucs)** - Audio source separation
 - **[Pexels](https://www.pexels.com)** - Stock video backgrounds
