@@ -4,7 +4,7 @@ import { GenerationParams, Song } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
 import { generateApi } from '../services/api';
-import { MAIN_STYLES } from '../data/genres';
+import { MAIN_STYLES, SUB_STYLES } from '../data/genres';
 
 interface ReferenceTrack {
   id: string;
@@ -78,9 +78,15 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
   const { t } = useI18n();
 
   // Randomly select 6 music tags from MAIN_STYLES
-  const musicTags = useMemo(() => {
+  const [musicTags, setMusicTags] = useState<string[]>(() => {
     const shuffled = [...MAIN_STYLES].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, 6);
+  });
+
+  // Function to refresh music tags
+  const refreshMusicTags = useCallback(() => {
+    const shuffled = [...MAIN_STYLES].sort(() => Math.random() - 0.5);
+    setMusicTags(shuffled.slice(0, 6));
   }, []);
 
   // Mode
@@ -151,6 +157,19 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
   const [trackName, setTrackName] = useState('');
   const [completeTrackClasses, setCompleteTrackClasses] = useState('');
   const [isFormatCaption, setIsFormatCaption] = useState(false);
+
+  // Genre selection state (cascading)
+  const [selectedMainGenre, setSelectedMainGenre] = useState<string>('');
+  const [selectedSubGenre, setSelectedSubGenre] = useState<string>('');
+
+  // Filter sub-genres based on selected main genre
+  const filteredSubGenres = useMemo(() => {
+    if (!selectedMainGenre) return [];
+    const mainLower = selectedMainGenre.toLowerCase().trim();
+    return SUB_STYLES.filter(style => 
+      style.toLowerCase().includes(mainLower)
+    );
+  }, [selectedMainGenre]);
 
   const [isUploadingReference, setIsUploadingReference] = useState(false);
   const [isUploadingSource, setIsUploadingSource] = useState(false);
@@ -989,14 +1008,29 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                   <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">{t('styleOfMusic')}</span>
                   <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">{t('genreMoodInstruments')}</p>
                 </div>
-                <button
-                  className={`p-1.5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded transition-colors ${isFormatting ? 'text-pink-500 animate-pulse' : 'text-zinc-500 hover:text-black dark:hover:text-white'}`}
-                  title="AI Format - Enhance style & auto-fill parameters"
-                  onClick={handleFormat}
-                  disabled={isFormatting || !style.trim()}
-                >
-                  <Sparkles size={14} />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    className="p-1.5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded transition-colors text-zinc-500 hover:text-black dark:hover:text-white"
+                    title={t('refreshGenres')}
+                    onClick={refreshMusicTags}
+                  >
+                    <Dices size={14} />
+                  </button>
+                  <button
+                    className={`p-1.5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded transition-colors ${isFormatting ? 'text-pink-500 animate-pulse' : 'text-zinc-500 hover:text-black dark:hover:text-white'}`}
+                    title="AI Format - Enhance style & auto-fill parameters"
+                    onClick={handleFormat}
+                    disabled={isFormatting || !style.trim()}
+                  >
+                    <Sparkles size={14} />
+                  </button>
+                  <button
+                    className="p-1.5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded text-zinc-500 hover:text-black dark:hover:text-white transition-colors"
+                    onClick={() => setStyle('')}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
               <textarea
                 value={style}
@@ -1004,16 +1038,83 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                 placeholder={t('stylePlaceholder')}
                 className="w-full h-20 bg-transparent p-3 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none resize-none"
               />
-              <div className="px-3 pb-3 flex flex-wrap gap-2">
-                {musicTags.map(tag => (
-                  <button
-                    key={tag}
-                    onClick={() => setStyle(prev => prev ? `${prev}, ${tag}` : tag)}
-                    className="text-[10px] font-medium bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white px-2.5 py-1 rounded-full transition-colors border border-zinc-200 dark:border-white/5"
-                  >
-                    {tag}
-                  </button>
-                ))}
+              <div className="px-3 pb-3 space-y-3">
+                {/* Cascading Genre Selector */}
+                <div className="space-y-2">
+                  {/* First Level: Main Genre */}
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedMainGenre}
+                      onChange={(e) => {
+                        setSelectedMainGenre(e.target.value);
+                        setSelectedSubGenre(''); // Reset sub genre when main changes
+                        if (e.target.value) {
+                          setStyle(prev => prev ? `${prev}, ${e.target.value}` : e.target.value);
+                        }
+                      }}
+                      className="flex-1 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500"
+                    >
+                      <option value="">{t('mainGenre')}</option>
+                      {MAIN_STYLES.map(genre => (
+                        <option key={genre} value={genre}>{genre}</option>
+                      ))}
+                    </select>
+                    {selectedMainGenre && (
+                      <button
+                        onClick={() => {
+                          setSelectedMainGenre('');
+                          setSelectedSubGenre('');
+                        }}
+                        className="px-2 py-1.5 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                        title={t('cancel')}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Second Level: Sub Genre (only show when main genre is selected) */}
+                  {selectedMainGenre && filteredSubGenres.length > 0 && (
+                    <div className="flex gap-2 pl-4 border-l-2 border-zinc-200 dark:border-white/10">
+                      <select
+                        value={selectedSubGenre}
+                        onChange={(e) => {
+                          setSelectedSubGenre(e.target.value);
+                          if (e.target.value) {
+                            setStyle(prev => prev ? `${prev}, ${e.target.value}` : e.target.value);
+                          }
+                        }}
+                        className="flex-1 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500"
+                      >
+                        <option value="">{t('subGenre')} ({filteredSubGenres.length})</option>
+                        {filteredSubGenres.map(genre => (
+                          <option key={genre} value={genre}>{genre}</option>
+                        ))}
+                      </select>
+                      {selectedSubGenre && (
+                        <button
+                          onClick={() => setSelectedSubGenre('')}
+                          className="px-2 py-1.5 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                          title={t('cancel')}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {/* Quick Tags */}
+                <div className="flex flex-wrap gap-2">
+                  {musicTags.map(tag => (
+                    <button
+                      key={tag}
+                      onClick={() => setStyle(prev => prev ? `${prev}, ${tag}` : tag)}
+                      className="text-[10px] font-medium bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white px-2.5 py-1 rounded-full transition-colors border border-zinc-200 dark:border-white/5"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

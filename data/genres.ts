@@ -17,6 +17,16 @@ export const ALL_STYLES = allStyleText
 // 为了向后兼容，保留原来的GENRE_KEYS（使用主要风格）
 export const GENRE_KEYS = MAIN_STYLES;
 
+// 小类风格：从所有风格中排除主要风格（大类）
+// 创建主要风格的小写集合用于快速查找
+const mainStylesLower = new Set(MAIN_STYLES.map(s => s.toLowerCase().trim()));
+
+export const SUB_STYLES = ALL_STYLES.filter(style => {
+  const styleLower = style.toLowerCase().trim();
+  return !mainStylesLower.has(styleLower);
+});
+
 // 类型定义
 export type MainStyle = typeof MAIN_STYLES[number];
 export type AllStyle = typeof ALL_STYLES[number];
+export type SubStyle = typeof SUB_STYLES[number];

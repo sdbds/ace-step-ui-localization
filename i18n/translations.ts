@@ -113,6 +113,9 @@ export const translations = {
     // CreatePanel - Style
     stylePlaceholder: 'e.g. upbeat pop rock, emotional ballad, 90s hip hop',
     genreMoodInstruments: 'Genre, mood, instruments, vibe',
+    refreshGenres: 'Refresh genre suggestions',
+    mainGenre: 'Main Genre',
+    subGenre: 'Sub Genre',
     nameSong: 'Name your song',
     
     // CreatePanel - Parameters
@@ -496,6 +499,9 @@ export const translations = {
     // CreatePanel - Style
     stylePlaceholder: '例如：欢快流行摇滚、抒情民谣、90年代嘻哈',
     genreMoodInstruments: '曲风、情绪、乐器、氛围',
+    refreshGenres: '刷新风格建议',
+    mainGenre: '大类风格',
+    subGenre: '小类风格',
     nameSong: '为歌曲命名',
     
     // CreatePanel - Parameters
@@ -879,6 +885,9 @@ export const translations = {
     // CreatePanel - Style
     stylePlaceholder: '例：アップビートなポップロック、エモーショナルなバラード、90年代ヒップホップ',
     genreMoodInstruments: 'ジャンル、ムード、楽器、雰囲気',
+    refreshGenres: 'ジャンル提案を更新',
+    mainGenre: 'メインジャンル',
+    subGenre: 'サブジャンル',
     nameSong: '曲名を付ける',
     
     // CreatePanel - Parameters
@@ -1262,6 +1271,9 @@ export const translations = {
     // CreatePanel - Style
     stylePlaceholder: '예: 경쾌한 팝 록, 감성적인 발라드, 90년대 힙합',
     genreMoodInstruments: '장르, 분위기, 악기, 느낌',
+    refreshGenres: '장르 제안 새로고침',
+    mainGenre: '주요 장르',
+    subGenre: '하위 장르',
     nameSong: '곡 이름 짓기',
     
     // CreatePanel - Parameters
