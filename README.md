@@ -144,16 +144,57 @@
 | Requirement | Specification |
 |-------------|---------------|
 | **Node.js** | 18 or higher |
-| **Python** | 3.10+ (3.11 recommended) |
-| **NVIDIA GPU** | 8GB+ VRAM (12GB+ recommended) |
+| **Python** | 3.10+ (3.11 recommended) OR Windows Portable Package |
+| **NVIDIA GPU** | 4GB+ VRAM (works without LLM), 12GB+ recommended (with LLM) |
+| **CUDA** | 12.8 (for Windows Portable Package) |
 | **FFmpeg** | For audio processing |
-| **uv** | Python package manager (recommended) |
+| **uv** | Python package manager (recommended for standard install) |
 
 ---
 
 ## ⚡ Quick Start
 
-### Linux / macOS
+### 🪟 Windows - One-Click Start (Easiest!)
+```batch
+cd ace-step-ui
+start-all.bat
+```
+**That's it!** This starts everything: API + Backend + Frontend in one command.
+
+> **Note:** By default, it looks for ACE-Step in `..\ACE-Step-1.5`.
+> If yours is elsewhere, set `ACESTEP_PATH` first:
+> ```batch
+> set ACESTEP_PATH=C:\path\to\ACE-Step-1.5
+> start-all.bat
+> ```
+
+### 🪟 Windows - Manual Start
+```batch
+REM 1. Start ACE-Step API
+cd C:\ACE-Step-1.5
+python_embeded\python acestep\api_server.py
+
+REM 2. Start ACE-Step UI (in another terminal)
+cd ace-step-ui
+start.bat
+```
+
+### Linux / macOS - One-Click Start (Easiest!)
+```bash
+cd ace-step-ui
+./start-all.sh
+```
+**That's it!** This starts everything: API + Backend + Frontend in one command.
+
+> **Note:** By default, it looks for ACE-Step in `../ACE-Step-1.5`.
+> If yours is elsewhere, set `ACESTEP_PATH` first:
+> ```bash
+> export ACESTEP_PATH=/path/to/ACE-Step-1.5
+> ./start-all.sh
+> ```
+> **To stop:** `./stop-all.sh`
+
+### Linux / macOS - Manual Start
 ```bash
 # 1. Start ACE-Step API (in ACE-Step-1.5 directory)
 cd /path/to/ACE-Step-1.5
@@ -164,7 +205,7 @@ cd ace-step-ui
 ./start.sh
 ```
 
-### Windows
+### Windows (Standard Installation)
 ```batch
 REM 1. Start ACE-Step API (in ACE-Step-1.5 directory)
 cd C:\path\to\ACE-Step-1.5
@@ -182,6 +223,22 @@ Open **http://localhost:3000** and start creating!
 ## 📦 Installation
 
 ### 1. Install ACE-Step (The AI Engine)
+
+#### 🪟 Windows Portable Package (Recommended for Windows)
+
+**The easiest way to get started on Windows!** This package includes everything pre-configured:
+
+1. **Download** [ACE-Step-1.5.7z](https://files.acemusic.ai/acemusic/win/ACE-Step-1.5.7z) (~5GB)
+2. **Extract** to `C:\ACE-Step-1.5` (or your preferred location)
+3. **Done!** The package includes `python_embeded` with all dependencies
+
+✅ **Works with 4GB GPU** - No LLM installation required
+✅ **CUDA 12.8** included
+✅ **Zero setup hassle**
+
+> **Note:** Thinking Mode (LLM features) is automatically disabled on GPUs with <12GB VRAM. You can still enable it manually if you have 12GB+.
+
+#### Standard Installation (All Platforms)
 
 ```bash
 # Clone ACE-Step 1.5 - the open source Suno alternative
@@ -242,13 +299,19 @@ copy server\.env.example server\.env
 
 ### Step 1: Start ACE-Step API Server
 
+**🪟 Windows Portable Package:**
+```batch
+cd C:\ACE-Step-1.5
+python_embeded\python acestep\api_server.py
+```
+
 **Linux / macOS:**
 ```bash
 cd /path/to/ACE-Step-1.5
 uv run acestep-api --port 8001
 ```
 
-**Windows:**
+**Windows (Standard Installation):**
 ```batch
 cd C:\path\to\ACE-Step-1.5
 uv run acestep-api --port 8001
@@ -334,9 +397,11 @@ Full control over every parameter:
 
 | Issue | Solution |
 |-------|----------|
-| **ACE-Step API not reachable** | Ensure `uv run acestep-api --port 8001` is running |
-| **CUDA out of memory** | Close other GPU apps, reduce duration |
-| **Songs show 0:00 duration** | Install FFmpeg: `sudo apt install ffmpeg` |
+| **ACE-Step API not reachable** | Ensure API server is running (see Usage section) |
+| **CUDA out of memory** | Close other GPU apps, reduce duration, or disable Thinking Mode |
+| **4GB GPU - Out of memory** | Make sure **Thinking Mode is OFF** (it's off by default). LLM features require 12GB+ |
+| **AttributeError: 'NoneType'** | Update to latest ACE-Step-1.5 (fix merged in PR #109) |
+| **Songs show 0:00 duration** | Install FFmpeg: `sudo apt install ffmpeg` (Linux) or download from [ffmpeg.org](https://ffmpeg.org) (Windows) |
 | **LAN access not working** | Check firewall allows ports 3000 and 3001 |
 
 ---

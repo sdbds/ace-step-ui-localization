@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Song } from '../types';
-import { Heart, Share2, Play, MoreHorizontal, X, Copy, Wand2, MoreVertical, Download, Repeat, Video, Music, Link as LinkIcon, Sparkles, Globe, Lock, Trash2, Edit3, Layers } from 'lucide-react';
+import { Heart, Share2, Play, Pause, MoreHorizontal, X, Copy, Wand2, MoreVertical, Download, Repeat, Video, Music, Link as LinkIcon, Sparkles, Globe, Lock, Trash2, Edit3, Layers } from 'lucide-react';
 import { songsApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
@@ -20,9 +20,12 @@ interface RightSidebarProps {
     onToggleLike?: (songId: string) => void;
     onDelete?: (song: Song) => void;
     onAddToPlaylist?: (song: Song) => void;
+    onPlay?: (song: Song) => void;
+    isPlaying?: boolean;
+    currentSong?: Song | null;
 }
 
-export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpenVideo, onReuse, onSongUpdate, onNavigateToProfile, onNavigateToSong, isLiked, onToggleLike, onDelete, onAddToPlaylist }) => {
+export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpenVideo, onReuse, onSongUpdate, onNavigateToProfile, onNavigateToSong, isLiked, onToggleLike, onDelete, onAddToPlaylist, onPlay, isPlaying, currentSong }) => {
     const { token, user } = useAuth();
     const { t } = useI18n();
     const [showMenu, setShowMenu] = useState(false);
@@ -31,6 +34,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpe
     const [shareModalOpen, setShareModalOpen] = useState(false);
     const [copiedStyle, setCopiedStyle] = useState(false);
     const [copiedLyrics, setCopiedLyrics] = useState(false);
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [titleDraft, setTitleDraft] = useState('');
+    const [titleError, setTitleError] = useState<string | null>(null);
+    const [isSavingTitle, setIsSavingTitle] = useState(false);
 
     useEffect(() => {
         if (song) {
@@ -38,6 +45,57 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpe
         }
     }, [song, user]);
 
+    useEffect(() => {
+        if (song) {
+            setTitleDraft(song.title || '');
+            setIsEditingTitle(false);
+            setTitleError(null);
+            setIsSavingTitle(false);
+        }
+    }, [song?.id]);
+
+    const startTitleEdit = () => {
+        if (!song || !isOwner) return;
+        setTitleDraft(song.title || '');
+        setTitleError(null);
+        setIsEditingTitle(true);
+    };
+
+    const cancelTitleEdit = () => {
+        if (!song) return;
+        setTitleDraft(song.title || '');
+        setTitleError(null);
+        setIsEditingTitle(false);
+    };
+
+    const saveTitleEdit = async () => {
+        if (!song) return;
+        if (!token) {
+            setTitleError('Please sign in to rename.');
+            return;
+        }
+        const trimmed = titleDraft.trim();
+        if (!trimmed) {
+            setTitleError('Title cannot be empty.');
+            return;
+        }
+        if (trimmed === song.title) {
+            setIsEditingTitle(false);
+            return;
+        }
+        setIsSavingTitle(true);
+        setTitleError(null);
+        try {
+            await songsApi.updateSong(song.id, { title: trimmed }, token);
+            onSongUpdate?.({ ...song, title: trimmed });
+            setIsEditingTitle(false);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Rename failed';
+            setTitleError(message);
+        } finally {
+            setIsSavingTitle(false);
+        }
+    };
 
     if (!song) return (
         <div className="w-full h-full bg-zinc-50 dark:bg-suno-panel border-l border-zinc-200 dark:border-white/5 flex items-center justify-center text-zinc-400 dark:text-zinc-500 text-sm transition-colors duration-300">
@@ -66,7 +124,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpe
                 <div className="p-5 space-y-6">
 
                     {/* Cover Art */}
-                    <div className="group relative aspect-square w-full rounded-xl overflow-hidden shadow-2xl bg-zinc-200 dark:bg-zinc-800 ring-1 ring-black/5 dark:ring-white/10">
+                    <div
+                        className="group relative aspect-square w-full rounded-xl overflow-hidden shadow-2xl bg-zinc-200 dark:bg-zinc-800 ring-1 ring-black/5 dark:ring-white/10 cursor-pointer"
+                        onClick={() => onPlay?.(song)}
+                    >
                         {song.coverUrl ? (
                             <img src={song.coverUrl} alt={song.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                         ) : null}
@@ -74,6 +135,23 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpe
 
                         {/* Overlay Gradient */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60"></div>
+
+                        {/* Play Button Overlay */}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onPlay?.(song);
+                                }}
+                                className="w-16 h-16 rounded-full bg-white/95 dark:bg-white text-black flex items-center justify-center shadow-2xl hover:scale-110 transition-transform"
+                            >
+                                {isPlaying && currentSong?.id === song.id ? (
+                                    <Pause size={28} fill="currentColor" />
+                                ) : (
+                                    <Play size={28} fill="currentColor" className="ml-1" />
+                                )}
+                            </button>
+                        </div>
 
                         <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
                             <div className="flex items-center gap-2 text-white">
@@ -90,14 +168,67 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpe
                     <div className="space-y-3">
                         <div className="flex justify-between items-start gap-2">
                             <div className="flex items-center gap-2 flex-1">
-                                <h2
-                                    onClick={() => onNavigateToSong?.(song.id)}
-                                    className="text-2xl font-bold text-zinc-900 dark:text-white leading-tight tracking-tight cursor-pointer hover:underline"
-                                >
-                                    {song.title}
-                                </h2>
+                                {!isEditingTitle ? (
+                                    <h2
+                                        onClick={() => onNavigateToSong?.(song.id)}
+                                        className="text-2xl font-bold text-zinc-900 dark:text-white leading-tight tracking-tight cursor-pointer hover:underline"
+                                    >
+                                        {song.title}
+                                    </h2>
+                                ) : (
+                                    <div className="w-full">
+                                        <input
+                                            value={titleDraft}
+                                            onChange={(e) => setTitleDraft(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    void saveTitleEdit();
+                                                }
+                                                if (e.key === 'Escape') {
+                                                    e.preventDefault();
+                                                    cancelTitleEdit();
+                                                }
+                                            }}
+                                            className="w-full text-xl font-bold text-zinc-900 dark:text-white bg-white dark:bg-black/30 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500/40"
+                                            maxLength={120}
+                                            autoFocus
+                                        />
+                                        <div className="flex items-center gap-2 mt-2">
+                                            <button
+                                                onClick={() => void saveTitleEdit()}
+                                                disabled={isSavingTitle}
+                                                className="px-3 py-1.5 rounded-md text-xs font-semibold bg-pink-600 text-white hover:bg-pink-700 disabled:opacity-60"
+                                            >
+                                                {isSavingTitle ? 'Saving...' : 'Save'}
+                                            </button>
+                                            <button
+                                                onClick={cancelTitleEdit}
+                                                disabled={isSavingTitle}
+                                                className="px-3 py-1.5 rounded-md text-xs font-semibold bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-white/10 dark:text-zinc-200 dark:hover:bg-white/20 disabled:opacity-60"
+                                            >
+                                                Cancel
+                                            </button>
+                                            {titleError && (
+                                                <span className="text-xs text-red-500">{titleError}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             <div className="relative">
+                                {isOwner && !isEditingTitle && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            startTitleEdit();
+                                        }}
+                                        className="text-zinc-400 hover:text-black dark:hover:text-white p-1 mr-1"
+                                        title="Rename song"
+                                    >
+                                        <Edit3 size={18} />
+                                    </button>
+                                )}
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();

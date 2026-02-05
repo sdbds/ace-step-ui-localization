@@ -47,31 +47,58 @@ const KEY_SIGNATURES = [
 
 const TIME_SIGNATURES = ['', '2/4', '3/4', '4/4', '6/8'];
 
-const VOCAL_LANGUAGE_VALUES = [
+const VOCAL_LANGUAGE_KEYS = [
   { value: 'unknown', key: 'autoInstrumental' as const },
-  { value: 'en', key: 'english' as const },
-  { value: 'ja', key: 'japanese' as const },
-  { value: 'zh', key: 'chinese' as const },
-  { value: 'es', key: 'spanish' as const },
-  { value: 'de', key: 'german' as const },
-  { value: 'fr', key: 'french' as const },
-  { value: 'pt', key: 'portuguese' as const },
-  { value: 'ru', key: 'russian' as const },
-  { value: 'it', key: 'italian' as const },
-  { value: 'nl', key: 'dutch' as const },
-  { value: 'pl', key: 'polish' as const },
-  { value: 'tr', key: 'turkish' as const },
-  { value: 'vi', key: 'vietnamese' as const },
-  { value: 'cs', key: 'czech' as const },
-  { value: 'fa', key: 'persian' as const },
-  { value: 'id', key: 'indonesian' as const },
-  { value: 'ko', key: 'korean' as const },
-  { value: 'uk', key: 'ukrainian' as const },
-  { value: 'hu', key: 'hungarian' as const },
-  { value: 'ar', key: 'arabic' as const },
-  { value: 'sv', key: 'swedish' as const },
-  { value: 'ro', key: 'romanian' as const },
-  { value: 'el', key: 'greek' as const },
+  { value: 'ar', key: 'vocalArabic' as const },
+  { value: 'az', key: 'vocalAzerbaijani' as const },
+  { value: 'bg', key: 'vocalBulgarian' as const },
+  { value: 'bn', key: 'vocalBengali' as const },
+  { value: 'ca', key: 'vocalCatalan' as const },
+  { value: 'cs', key: 'vocalCzech' as const },
+  { value: 'da', key: 'vocalDanish' as const },
+  { value: 'de', key: 'vocalGerman' as const },
+  { value: 'el', key: 'vocalGreek' as const },
+  { value: 'en', key: 'vocalEnglish' as const },
+  { value: 'es', key: 'vocalSpanish' as const },
+  { value: 'fa', key: 'vocalPersian' as const },
+  { value: 'fi', key: 'vocalFinnish' as const },
+  { value: 'fr', key: 'vocalFrench' as const },
+  { value: 'he', key: 'vocalHebrew' as const },
+  { value: 'hi', key: 'vocalHindi' as const },
+  { value: 'hr', key: 'vocalCroatian' as const },
+  { value: 'ht', key: 'vocalHaitianCreole' as const },
+  { value: 'hu', key: 'vocalHungarian' as const },
+  { value: 'id', key: 'vocalIndonesian' as const },
+  { value: 'is', key: 'vocalIcelandic' as const },
+  { value: 'it', key: 'vocalItalian' as const },
+  { value: 'ja', key: 'vocalJapanese' as const },
+  { value: 'ko', key: 'vocalKorean' as const },
+  { value: 'la', key: 'vocalLatin' as const },
+  { value: 'lt', key: 'vocalLithuanian' as const },
+  { value: 'ms', key: 'vocalMalay' as const },
+  { value: 'ne', key: 'vocalNepali' as const },
+  { value: 'nl', key: 'vocalDutch' as const },
+  { value: 'no', key: 'vocalNorwegian' as const },
+  { value: 'pa', key: 'vocalPunjabi' as const },
+  { value: 'pl', key: 'vocalPolish' as const },
+  { value: 'pt', key: 'vocalPortuguese' as const },
+  { value: 'ro', key: 'vocalRomanian' as const },
+  { value: 'ru', key: 'vocalRussian' as const },
+  { value: 'sa', key: 'vocalSanskrit' as const },
+  { value: 'sk', key: 'vocalSlovak' as const },
+  { value: 'sr', key: 'vocalSerbian' as const },
+  { value: 'sv', key: 'vocalSwedish' as const },
+  { value: 'sw', key: 'vocalSwahili' as const },
+  { value: 'ta', key: 'vocalTamil' as const },
+  { value: 'te', key: 'vocalTelugu' as const },
+  { value: 'th', key: 'vocalThai' as const },
+  { value: 'tl', key: 'vocalTagalog' as const },
+  { value: 'tr', key: 'vocalTurkish' as const },
+  { value: 'uk', key: 'vocalUkrainian' as const },
+  { value: 'ur', key: 'vocalUrdu' as const },
+  { value: 'vi', key: 'vocalVietnamese' as const },
+  { value: 'yue', key: 'vocalCantonese' as const },
+  { value: 'zh', key: 'vocalChineseMandarin' as const },
 ];
 
 export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerating, initialData }) => {
@@ -118,7 +145,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
   const [guidanceScale, setGuidanceScale] = useState(7.0);
   const [randomSeed, setRandomSeed] = useState(true);
   const [seed, setSeed] = useState(-1);
-  const [thinking, setThinking] = useState(true);
+  const [thinking, setThinking] = useState(false); // Default false for GPU compatibility
   const [audioFormat, setAudioFormat] = useState<'mp3' | 'flac'>('mp3');
   const [inferenceSteps, setInferenceSteps] = useState(8);
   const [inferMethod, setInferMethod] = useState<'ode' | 'sde'>('ode');
@@ -858,7 +885,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                 onChange={(e) => setVocalLanguage(e.target.value)}
                 className="w-full bg-transparent p-3 text-sm text-zinc-900 dark:text-white focus:outline-none cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
               >
-                {VOCAL_LANGUAGE_VALUES.map(lang => (
+                {VOCAL_LANGUAGE_KEYS.map(lang => (
                   <option key={lang.value} value={lang.value}>{t(lang.key)}</option>
                 ))}
               </select>
@@ -1345,7 +1372,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                   onChange={(e) => setVocalLanguage(e.target.value)}
                   className="w-full bg-white dark:bg-suno-card border border-zinc-200 dark:border-white/5 rounded-xl px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
                 >
-                  {VOCAL_LANGUAGE_VALUES.map(lang => (
+                  {VOCAL_LANGUAGE_KEYS.map(lang => (
                     <option key={lang.value} value={lang.value}>{t(lang.key)}</option>
                   ))}
                 </select>

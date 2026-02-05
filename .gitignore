@@ -90,3 +90,6 @@ comfyui/
 
 # External editors (wavacity is 184MB - clone separately if needed)
 wavacity-editor/
+
+# Script logs
+logs/
