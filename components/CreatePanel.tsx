@@ -1557,7 +1557,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                 {/* LM Temperature */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">LM Temperature</label>
+                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Creativity (Temperature)</label>
                     <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">{lmTemperature.toFixed(2)}</span>
                   </div>
                   <input
@@ -1569,13 +1569,13 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                     onChange={(e) => setLmTemperature(Number(e.target.value))}
                     className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
                   />
-                  <p className="text-[10px] text-zinc-500">Higher = more random (0-2)</p>
+                  <p className="text-[10px] text-zinc-500">Lower = more deterministic, higher = more variety (0–2)</p>
                 </div>
 
                 {/* LM CFG Scale */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">LM CFG Scale</label>
+                    <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Prompt Adherence (CFG Scale)</label>
                     <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">{lmCfgScale.toFixed(1)}</span>
                   </div>
                   <input
@@ -1587,14 +1587,14 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                     onChange={(e) => setLmCfgScale(Number(e.target.value))}
                     className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
                   />
-                  <p className="text-[10px] text-zinc-500">1.0 = no CFG (1-3)</p>
+                  <p className="text-[10px] text-zinc-500">Higher = follows prompt more, lower = more freedom (1–3)</p>
                 </div>
 
                 {/* LM Top-K & Top-P */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Top-K</label>
+                      <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Token Choice Limit (Top‑K)</label>
                       <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">{lmTopK}</span>
                     </div>
                     <input
@@ -1606,10 +1606,11 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                       onChange={(e) => setLmTopK(Number(e.target.value))}
                       className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
                     />
+                    <p className="text-[10px] text-zinc-500">Sample only from the top K likely tokens</p>
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Top-P</label>
+                      <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Probability Mass (Top‑P)</label>
                       <span className="text-xs font-mono text-zinc-900 dark:text-white bg-zinc-100 dark:bg-black/20 px-2 py-0.5 rounded">{lmTopP.toFixed(2)}</span>
                     </div>
                     <input
@@ -1621,6 +1622,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({ onGenerate, isGenerati
                       onChange={(e) => setLmTopP(Number(e.target.value))}
                       className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
                     />
+                    <p className="text-[10px] text-zinc-500">Sample from smallest set totaling P probability</p>
                   </div>
                 </div>
 
