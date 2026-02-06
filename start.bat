@@ -29,6 +29,16 @@ for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do (
     )
 )
 
+REM ============= ACE-Step Configuration | ACE-Step 配置 =============
+REM Set ACE-Step installation path (parent directory)
+set ACESTEP_PATH=%~dp0..
+REM Set Python executable path (virtual environment)
+set PYTHON_PATH=%~dp0..\.venv\Scripts\python.exe
+
+echo ACE-Step Path: %ACESTEP_PATH%
+echo Python Path: %PYTHON_PATH%
+echo.
+
 echo Starting ACE-Step UI...
 echo.
 echo Make sure ACE-Step API is running:
