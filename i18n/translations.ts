@@ -53,6 +53,7 @@ export const translations = {
     download: 'Download',
     play: 'Play',
     pause: 'Pause',
+    normalSpeed: 'Normal',
     next: 'Next',
     previous: 'Previous',
     
@@ -598,6 +599,7 @@ export const translations = {
     download: '下载',
     play: '播放',
     pause: '暂停',
+    normalSpeed: '正常',
     next: '下一首',
     previous: '上一首',
     
@@ -1143,6 +1145,7 @@ export const translations = {
     download: 'ダウンロード',
     play: '再生',
     pause: '一時停止',
+    normalSpeed: '通常',
     next: '次へ',
     previous: '前へ',
     
@@ -1682,6 +1685,7 @@ export const translations = {
     download: '다운로드',
     play: '재생',
     pause: '일시정지',
+    normalSpeed: '보통',
     next: '다음',
     previous: '이전',
     

@@ -319,7 +319,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
         instruction: params.instruction,
         audio_cover_strength: params.audioCoverStrength || 1.0,
         task_type: params.taskType || 'text2music',
-        use_adg: false, // Disable ADG to avoid dimension mismatch with LoRA
+        use_adg: params.loraLoaded ? false : (params.useAdg || false),
         cfg_interval_start: params.cfgIntervalStart || 0.0,
         cfg_interval_end: params.cfgIntervalEnd || 1.0,
         infer_method: params.inferMethod || 'ode',

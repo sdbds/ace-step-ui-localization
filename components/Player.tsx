@@ -526,7 +526,7 @@ export const Player: React.FC<PlayerProps> = ({
                                                     playbackRate === rate ? 'text-pink-600 dark:text-pink-500 font-bold' : 'text-zinc-700 dark:text-zinc-300'
                                                 }`}
                                             >
-                                                {rate === 1.0 ? '正常' : `${rate}x`}
+                                                {rate === 1.0 ? t('normalSpeed') : `${rate}x`}
                                             </button>
                                         ))}
                                     </div>
@@ -734,7 +734,7 @@ export const Player: React.FC<PlayerProps> = ({
                                             playbackRate === rate ? 'text-pink-600 dark:text-pink-500 font-bold' : 'text-zinc-700 dark:text-zinc-300'
                                         }`}
                                     >
-                                        {rate === 1.0 ? '正常' : `${rate}x`}
+                                        {rate === 1.0 ? t('normalSpeed') : `${rate}x`}
                                     </button>
                                 ))}
                             </div>

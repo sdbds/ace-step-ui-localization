@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Upload, Play, Square, FolderOpen, Save, FileJson, Zap, Database, ChevronDown, ChevronUp, Edit2, X } from 'lucide-react';
 
 const VOCAL_LANGUAGE_VALUES = [
@@ -65,6 +65,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
   const [onlyUnlabeled, setOnlyUnlabeled] = useState(false);
   const [labelProgress, setLabelProgress] = useState('');
   const [labelStatus, setLabelStatus] = useState<{ current: number; total: number; status: string } | null>(null);
+  const labelPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [selectedSampleIndex, setSelectedSampleIndex] = useState(0);
   const [savePath, setSavePath] = useState('./datasets/my_lora_dataset.json');
   const [saveStatus, setSaveStatus] = useState('');
@@ -163,6 +164,16 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
     
     checkInitialTrainingStatus();
   }, [token]);
+
+  // Clean up label polling on unmount
+  useEffect(() => {
+    return () => {
+      if (labelPollRef.current) {
+        clearInterval(labelPollRef.current);
+        labelPollRef.current = null;
+      }
+    };
+  }, []);
 
   // Poll training status when training is active
   useEffect(() => {
@@ -267,14 +278,14 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
   const handleAutoLabel = async () => {
     if (!token) return;
     setLabelProgress(t('autoLabeling'));
-    
+
     try {
       // Start async labeling task
       const startResult = await trainingApi.autoLabelAsync({
         skip_metas: skipMetas,
         only_unlabeled: onlyUnlabeled,
       }, token);
-      
+
       if (!startResult || !startResult.task_id) {
         setLabelProgress('Failed to start auto-labeling: No response from server');
         return;
@@ -282,20 +293,26 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
       const taskId = startResult.task_id;
       setLabelProgress(`${startResult.message || 'Starting'} (0/${startResult.total || 0})`);
       setLabelStatus({ current: 0, total: startResult.total || 0, status: 'running' });
-      
+
+      // Clear any previous poll before starting a new one
+      if (labelPollRef.current) {
+        clearInterval(labelPollRef.current);
+      }
+
       // Poll for status
       const pollInterval = setInterval(async () => {
         try {
           const statusResult = await trainingApi.getAutoLabelStatus(taskId, token);
-          
+
           // Update progress display
           const progressText = `${statusResult.progress} (${statusResult.current}/${statusResult.total})`;
           setLabelProgress(progressText);
           setLabelStatus({ current: statusResult.current, total: statusResult.total, status: statusResult.status });
-          
+
           // Check if completed
           if (statusResult.status === 'completed') {
             clearInterval(pollInterval);
+            labelPollRef.current = null;
             if (statusResult.result) {
               setLabelProgress(statusResult.result.message || 'Labeling completed');
               setAudioFiles(transformSamples(statusResult.result.samples || []));
@@ -304,19 +321,20 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
             setLabelStatus(null);
           } else if (statusResult.status === 'failed') {
             clearInterval(pollInterval);
+            labelPollRef.current = null;
             setLabelProgress(`${t('error')}: ${statusResult.error || 'Unknown error'}`);
             setLabelStatus(null);
           }
         } catch (pollError: any) {
           clearInterval(pollInterval);
+          labelPollRef.current = null;
           setLabelProgress(`${t('error')}: ${pollError?.message || 'Failed to check labeling status'}`);
           setLabelStatus(null);
         }
       }, 2000); // Poll every 2 seconds
-      
-      // Cleanup on unmount
-      return () => clearInterval(pollInterval);
-      
+
+      labelPollRef.current = pollInterval;
+
     } catch (error: any) {
       setLabelProgress(`${t('error')}: ${error?.message || 'Failed to start auto-labeling'}`);
     }
