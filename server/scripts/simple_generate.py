@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import time
+import torch
 
 # Get ACE-Step path from environment or use default
 ACESTEP_PATH = os.environ.get('ACESTEP_PATH', '/home/ambsd/Desktop/aceui/ACE-Step-1.5')
@@ -25,7 +26,7 @@ _handler = None
 _llm_handler = None
 _current_model = None
 
-def get_handlers(model: str = None):
+def get_handlers():
     global _handler, _llm_handler, _current_model
     
     # Default model if not specified
@@ -34,12 +35,18 @@ def get_handlers(model: str = None):
     
     # Reinitialize if model changed
     if _handler is None or _current_model != model:
+        if torch.cuda.is_available():
+            device = "cuda"
+        elif torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
         _handler = AceStepHandler()
         _handler.initialize_service(
             use_flash_attention=True,
             project_root=ACESTEP_PATH,
             config_path=model,
-            device="cuda",
+            device=device,
             offload_to_cpu=True,
         )
         _llm_handler = LLMHandler()  # Create but don't initialize (not enough VRAM)

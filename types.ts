@@ -8,6 +8,9 @@ export interface Song {
   createdAt: Date;
   isGenerating?: boolean;
   queuePosition?: number; // Position in queue (undefined = actively generating, number = waiting in queue)
+  progress?: number;
+  stage?: string;
+  generationParams?: any;
   tags: string[];
   audioUrl?: string;
   isPublic?: boolean;
@@ -85,10 +88,14 @@ export interface GenerationParams {
   lmTopK: number;
   lmTopP: number;
   lmNegativePrompt: string;
+  lmBackend?: 'pt' | 'vllm';
+  lmModel?: string;
 
   // Expert Parameters
   referenceAudioUrl?: string;
   sourceAudioUrl?: string;
+  referenceAudioTitle?: string;
+  sourceAudioTitle?: string;
   audioCodes?: string;
   repaintingStart?: number;
   repaintingEnd?: number;

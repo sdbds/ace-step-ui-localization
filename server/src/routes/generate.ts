@@ -10,6 +10,8 @@ import {
   discoverEndpoints,
   checkSpaceHealth,
   downloadAudioToBuffer,
+  getJobRawResponse,
+  resolvePythonPath,
 } from '../services/acestep.js';
 import { config } from '../config/index.js';
 import { getStorageProvider } from '../services/storage/factory.js';
@@ -30,13 +32,15 @@ const audioUpload = multer({
       'audio/flac',
       'audio/x-flac',
       'audio/mp4',
+      'audio/x-m4a',
       'audio/aac',
       'audio/ogg',
       'audio/webm',
+      'video/mp4',
     ];
 
     // Also check file extension as fallback
-    const allowedExtensions = ['.mp3', '.wav', '.flac', '.m4a', '.aac', '.ogg', '.webm', '.opus'];
+    const allowedExtensions = ['.mp3', '.wav', '.flac', '.m4a', '.mp4', '.aac', '.ogg', '.webm', '.opus'];
     const fileExt = file.originalname.toLowerCase().match(/\.[^.]+$/)?.[0];
 
     if (allowedTypes.includes(file.mimetype) || (fileExt && allowedExtensions.includes(fileExt))) {
@@ -89,10 +93,14 @@ interface GenerateBody {
   lmTopK?: number;
   lmTopP?: number;
   lmNegativePrompt?: string;
+  lmBackend?: 'pt' | 'vllm';
+  lmModel?: string;
 
   // Expert Parameters
   referenceAudioUrl?: string;
   sourceAudioUrl?: string;
+  referenceAudioTitle?: string;
+  sourceAudioTitle?: string;
   audioCodes?: string;
   repaintingStart?: number;
   repaintingEnd?: number;
@@ -141,10 +149,13 @@ router.post('/upload-audio', authMiddleware, audioUpload.single('audio'), async 
         case 'audio/ogg':
           return '.ogg';
         case 'audio/mp4':
+        case 'audio/x-m4a':
         case 'audio/aac':
           return '.m4a';
         case 'audio/webm':
           return '.webm';
+        case 'video/mp4':
+          return '.mp4';
         default:
           return '';
       }
@@ -190,8 +201,12 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
       lmTopK,
       lmTopP,
       lmNegativePrompt,
+      lmBackend,
+      lmModel,
       referenceAudioUrl,
       sourceAudioUrl,
+      referenceAudioTitle,
+      sourceAudioTitle,
       audioCodes,
       repaintingStart,
       repaintingEnd,
@@ -255,8 +270,12 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
       lmTopK,
       lmTopP,
       lmNegativePrompt,
+      lmBackend,
+      lmModel,
       referenceAudioUrl,
       sourceAudioUrl,
+      referenceAudioTitle,
+      sourceAudioTitle,
       audioCodes,
       repaintingStart,
       repaintingEnd,
@@ -511,7 +530,8 @@ router.get('/status/:jobId', authMiddleware, async (req: AuthenticatedRequest, r
                 const { buffer } = await downloadAudioToBuffer(audioUrl);
                 const ext = audioUrl.includes('.flac') ? '.flac' : '.mp3';
                 const storageKey = `${req.user!.id}/${songId}${ext}`;
-                const storedPath = await storage.upload(storageKey, buffer, `audio/${ext.slice(1)}`);
+                await storage.upload(storageKey, buffer, `audio/${ext.slice(1)}`);
+                const storedPath = storage.getPublicUrl(storageKey);
 
                 await pool.query(
                   `INSERT INTO songs (id, user_id, title, lyrics, style, caption, audio_url,
@@ -575,6 +595,8 @@ router.get('/status/:jobId', authMiddleware, async (req: AuthenticatedRequest, r
           status: aceStatus.status,
           queuePosition: aceStatus.queuePosition,
           etaSeconds: aceStatus.etaSeconds,
+          progress: aceStatus.progress,
+          stage: aceStatus.stage,
           result: aceStatus.result,
           error: aceStatus.error,
         });
@@ -588,6 +610,8 @@ router.get('/status/:jobId', authMiddleware, async (req: AuthenticatedRequest, r
     res.json({
       jobId: req.params.jobId,
       status: job.status,
+      progress: undefined,
+      stage: undefined,
       result: job.result && typeof job.result === 'string' ? JSON.parse(job.result) : job.result,
       error: job.error,
     });
@@ -683,47 +707,193 @@ router.get('/health', async (_req, res: Response) => {
   }
 });
 
-// Debug endpoint removed - use 8001 API directly if needed
+router.get('/limits', async (_req, res: Response) => {
+  try {
+    const { spawn } = await import('child_process');
+    const ACESTEP_DIR = process.env.ACESTEP_PATH || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../ACE-Step-1.5');
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const SCRIPTS_DIR = path.join(__dirname, '../../scripts');
+    const LIMITS_SCRIPT = path.join(SCRIPTS_DIR, 'get_limits.py');
+    const pythonPath = resolvePythonPath(ACESTEP_DIR);
 
-// Format endpoint - uses LLM to enhance style/lyrics via 8001 API
+    const result = await new Promise<{ success: boolean; data?: any; error?: string }>((resolve) => {
+      const proc = spawn(pythonPath, [LIMITS_SCRIPT], {
+        cwd: ACESTEP_DIR,
+        env: {
+          ...process.env,
+          ACESTEP_PATH: ACESTEP_DIR,
+        },
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      proc.stdout.on('data', (data) => { stdout += data.toString(); });
+      proc.stderr.on('data', (data) => { stderr += data.toString(); });
+
+      proc.on('close', (code) => {
+        if (code === 0 && stdout) {
+          try {
+            const parsed = JSON.parse(stdout);
+            resolve({ success: true, data: parsed });
+          } catch {
+            resolve({ success: false, error: 'Failed to parse limits result' });
+          }
+        } else {
+          resolve({ success: false, error: stderr || 'Failed to read limits' });
+        }
+      });
+
+      proc.on('error', (err) => {
+        resolve({ success: false, error: err.message });
+      });
+    });
+
+    if (result.success && result.data) {
+      res.json(result.data);
+    } else {
+      res.status(500).json({ error: result.error || 'Failed to load limits' });
+    }
+  } catch (error) {
+    console.error('Limits error:', error);
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+router.get('/debug/:taskId', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const rawResponse = getJobRawResponse(req.params.taskId);
+    if (!rawResponse) {
+      res.status(404).json({ error: 'Job not found or no raw response available' });
+      return;
+    }
+    res.json({ rawResponse });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// Format endpoint - uses LLM to enhance style/lyrics
+// Strategy: try 8001 API first, fall back to local Python script
 router.post('/format', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { caption, lyrics, bpm, duration, keyScale, timeSignature, temperature, topK, topP } = req.body;
+    const { caption, lyrics, bpm, duration, keyScale, timeSignature, temperature, topK, topP, lmModel, lmBackend } = req.body;
 
     if (!caption) {
       res.status(400).json({ error: 'Caption/style is required' });
       return;
     }
 
-    // Call 8001 API format_input endpoint
-    const formatResponse = await fetch(`${config.acestep.apiUrl}/format_input`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ACESTEP_API_KEY || '',
-      },
-      body: JSON.stringify({
-        caption,
-        lyrics: lyrics || '',
-        bpm: bpm || 0,
-        duration: duration || 0,
-        key_scale: keyScale || '',
-        time_signature: timeSignature || '',
-        temperature: temperature,
-        top_k: topK,
-        top_p: topP,
-      }),
-    });
+    // Attempt 1: Call 8001 API format_input endpoint
+    try {
+      const formatResponse = await fetch(`${config.acestep.apiUrl}/format_input`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ACESTEP_API_KEY || '',
+        },
+        body: JSON.stringify({
+          caption,
+          lyrics: lyrics || '',
+          bpm: bpm || 0,
+          duration: duration || 0,
+          key_scale: keyScale || '',
+          time_signature: timeSignature || '',
+          temperature: temperature,
+          top_k: topK,
+          top_p: topP,
+        }),
+      });
 
-    if (!formatResponse.ok) {
-      const error = await formatResponse.json().catch(() => ({ error: 'Format failed' }));
-      throw new Error(error.error || error.message || 'Failed to format input');
+      if (formatResponse.ok) {
+        const result = await formatResponse.json();
+        res.json(result.data || result);
+        return;
+      }
+      console.warn(`[Format] API returned ${formatResponse.status}, falling back to Python script`);
+    } catch (apiError) {
+      console.warn('[Format] API unavailable, falling back to Python script:', (apiError as Error).message);
     }
 
-    const result = await formatResponse.json();
-    res.json(result.data || result);
+    // Attempt 2: Fall back to local Python script
+    const { spawn } = await import('child_process');
+
+    const ACESTEP_DIR = process.env.ACESTEP_PATH || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../ACE-Step-1.5');
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const SCRIPTS_DIR = path.join(__dirname, '../../scripts');
+    const FORMAT_SCRIPT = path.join(SCRIPTS_DIR, 'format_sample.py');
+    const pythonPath = resolvePythonPath(ACESTEP_DIR);
+
+    const args = [
+      FORMAT_SCRIPT,
+      '--caption', caption,
+      '--json',
+    ];
+
+    if (lyrics) args.push('--lyrics', lyrics);
+    if (bpm && bpm > 0) args.push('--bpm', String(bpm));
+    if (duration && duration > 0) args.push('--duration', String(duration));
+    if (keyScale) args.push('--key-scale', keyScale);
+    if (timeSignature) args.push('--time-signature', timeSignature);
+    if (temperature !== undefined) args.push('--temperature', String(temperature));
+    if (topK && topK > 0) args.push('--top-k', String(topK));
+    if (topP !== undefined) args.push('--top-p', String(topP));
+    if (lmModel) args.push('--lm-model', lmModel);
+    if (lmBackend) args.push('--lm-backend', lmBackend);
+
+    const result = await new Promise<{ success: boolean; data?: any; error?: string }>((resolve) => {
+      const proc = spawn(pythonPath, args, {
+        cwd: ACESTEP_DIR,
+        env: {
+          ...process.env,
+          ACESTEP_PATH: ACESTEP_DIR,
+        },
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      proc.stdout.on('data', (data) => { stdout += data.toString(); });
+      proc.stderr.on('data', (data) => { stderr += data.toString(); });
+
+      proc.on('close', (code) => {
+        if (code === 0 && stdout) {
+          const lines = stdout.trim().split('\n');
+          let jsonStr = '';
+          for (let i = lines.length - 1; i >= 0; i--) {
+            if (lines[i].startsWith('{')) { jsonStr = lines[i]; break; }
+          }
+          try {
+            const parsed = JSON.parse(jsonStr || stdout);
+            resolve({ success: true, data: parsed });
+          } catch {
+            console.error('[Format] Failed to parse stdout:', stdout.slice(0, 500));
+            resolve({ success: false, error: 'Failed to parse format result' });
+          }
+        } else {
+          console.error(`[Format] Process exited with code ${code}`);
+          if (stdout) console.error('[Format] stdout:', stdout.slice(0, 1000));
+          if (stderr) console.error('[Format] stderr:', stderr.slice(0, 1000));
+          resolve({ success: false, error: stderr || stdout || `Format process exited with code ${code}` });
+        }
+      });
+
+      proc.on('error', (err) => {
+        console.error('[Format] Spawn error:', err.message);
+        resolve({ success: false, error: err.message });
+      });
+    });
+
+    if (result.success && result.data) {
+      res.json(result.data);
+    } else {
+      console.error('[Format] Python error:', result.error);
+      res.status(500).json({ success: false, error: result.error });
+    }
   } catch (error) {
-    console.error('Format error:', error);
+    console.error('[Format] Route error:', error);
     res.status(500).json({ error: (error as Error).message });
   }
 });

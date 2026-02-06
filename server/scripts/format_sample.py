@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import time
+import torch
 
 # Get ACE-Step path from environment or use default
 ACESTEP_PATH = os.environ.get('ACESTEP_PATH', '/home/ambsd/Desktop/aceui/ACE-Step-1.5')
@@ -16,6 +17,8 @@ sys.path.insert(0, ACESTEP_PATH)
 
 from acestep.llm_inference import LLMHandler
 from acestep.inference import format_sample
+from pathlib import Path
+from acestep.model_downloader import download_submodel
 
 # Global handler
 _llm_handler = None
@@ -62,26 +65,47 @@ def find_smallest_lm_model(checkpoint_dir):
         print(f"Warning: Error finding LM model: {e}", file=sys.stderr)
         return None
 
-def get_llm_handler():
+def get_llm_handler(lm_model=None, lm_backend=None):
     global _llm_handler
     if _llm_handler is None:
         _llm_handler = LLMHandler()
         checkpoint_dir = os.path.join(ACESTEP_PATH, "checkpoints")
         
-        # Auto-detect smallest LM model
-        lm_model_path = find_smallest_lm_model(checkpoint_dir)
-        if lm_model_path:
-            print(f"Using detected LM model: {lm_model_path}", file=sys.stderr)
+        # Auto-detect smallest LM model if not specified
+        if not lm_model:
+            lm_model_path = find_smallest_lm_model(checkpoint_dir)
+            if lm_model_path:
+                print(f"Using detected LM model: {lm_model_path}", file=sys.stderr)
+            else:
+                # Fallback to default
+                lm_model_path = "acestep-5Hz-lm-0.6B"
+                print(f"No LM model detected, using default: {lm_model_path}", file=sys.stderr)
         else:
-            # Fallback to default
-            lm_model_path = "acestep-5Hz-lm-0.6B"
-            print(f"No LM model detected, using default: {lm_model_path}", file=sys.stderr)
+            lm_model_path = lm_model
+        
+        backend = lm_backend or "pt"
+
+        # Auto-download model if not present
+        model_dir = os.path.join(checkpoint_dir, lm_model_path)
+        if not os.path.exists(model_dir) or not os.listdir(model_dir):
+            print(f"[format_sample] Model {lm_model_path} not found, downloading...")
+            success, msg = download_submodel(lm_model_path, Path(checkpoint_dir))
+            if not success:
+                raise RuntimeError(f"Failed to download model {lm_model_path}: {msg}")
+            print(f"[format_sample] Download complete: {msg}")
+        
+        if torch.cuda.is_available():
+            device = "cuda"
+        elif torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
 
         status, success = _llm_handler.initialize(
             checkpoint_dir=checkpoint_dir,
             lm_model_path=lm_model_path,
-            backend="pt",  # Use PyTorch backend
-            device="cuda",
+            backend=backend,
+            device=device,
             offload_to_cpu=True,
         )
 
@@ -100,9 +124,11 @@ def format_input(
     temperature: float = 0.85,
     top_k: int = 0,
     top_p: float = 0.9,
+    lm_model: str = None,
+    lm_backend: str = None,
 ):
     """Format caption and lyrics using the LLM."""
-    handler = get_llm_handler()
+    handler = get_llm_handler(lm_model=lm_model, lm_backend=lm_backend)
 
     # Build user metadata for constrained decoding
     user_metadata = {}
@@ -153,6 +179,8 @@ def main():
     parser.add_argument("--temperature", type=float, default=0.85, help="LLM temperature")
     parser.add_argument("--top-k", type=int, default=0, help="LLM top-k sampling")
     parser.add_argument("--top-p", type=float, default=0.9, help="LLM top-p sampling")
+    parser.add_argument("--lm-model", type=str, default=None, help="LM model name (e.g. acestep-5Hz-lm-0.6B, acestep-5Hz-lm-1.7B, acestep-5Hz-lm-4B)")
+    parser.add_argument("--lm-backend", type=str, default=None, help="LM backend (pt or vllm)")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
 
     args = parser.parse_args()
@@ -169,6 +197,8 @@ def main():
             temperature=args.temperature,
             top_k=args.top_k,
             top_p=args.top_p,
+            lm_model=args.lm_model,
+            lm_backend=args.lm_backend,
         )
         elapsed = time.time() - start_time
         result["elapsed_seconds"] = elapsed

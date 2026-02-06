@@ -21,6 +21,7 @@ export const EditableSlider: React.FC<EditableSliderProps> = ({
   onChange,
   formatDisplay,
   helpText,
+  title = '',
   autoLabel = 'Auto',
 }) => {
   const [inputValue, setInputValue] = useState(value.toString());
@@ -62,7 +63,7 @@ export const EditableSlider: React.FC<EditableSliderProps> = ({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{label}</label>
+        <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={title}>{label}</label>
         {isEditing ? (
           <input
             type="number"

@@ -107,6 +107,7 @@ export interface Song {
   created_at: string;
   creator?: string;
   ditModel?: string;
+  generation_params?: any;
 }
 
 // Transform songs to have proper audio URLs
@@ -274,10 +275,14 @@ export interface GenerationParams {
   lmTopK?: number;
   lmTopP?: number;
   lmNegativePrompt?: string;
+  lmBackend?: 'pt' | 'vllm';
+  lmModel?: string;
 
   // Expert Parameters
   referenceAudioUrl?: string;
   sourceAudioUrl?: string;
+  referenceAudioTitle?: string;
+  sourceAudioTitle?: string;
   audioCodes?: string;
   repaintingStart?: number;
   repaintingEnd?: number;
@@ -309,6 +314,8 @@ export interface GenerationJob {
   status: 'pending' | 'queued' | 'running' | 'succeeded' | 'failed';
   queuePosition?: number;
   etaSeconds?: number;
+  progress?: number;
+  stage?: string;
   result?: {
     audioUrls: string[];
     bpm?: number;
@@ -354,6 +361,8 @@ export const generateApi = {
     temperature?: number;
     topK?: number;
     topP?: number;
+    lmModel?: string;
+    lmBackend?: string;
   }, token: string): Promise<{
     success: boolean;
     caption?: string;

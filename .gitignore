@@ -87,6 +87,7 @@ __pycache__/
 # Misc
 ComfyUI/
 comfyui/
+ACE-Step-1.5/
 
 # External editors (wavacity is 184MB - clone separately if needed)
 wavacity-editor/
