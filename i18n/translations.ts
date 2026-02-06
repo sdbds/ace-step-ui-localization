@@ -269,6 +269,41 @@ export const translations = {
     sdeStochastic: 'SDE (stochastic)',
     min: 'min',
     
+    // CreatePanel - Drag & Drop
+    dropToUseAudio: 'Drop to use audio',
+    dropToUpload: 'Drop to upload',
+    usingAsReference: 'Using as Reference',
+    usingAsCover: 'Using as Cover',
+    uploadingAsReference: 'Uploading as Reference',
+    uploadingAsCover: 'Uploading as Cover',
+    
+    // CreatePanel - Vocal Gender
+    vocalGender: 'Vocal Gender',
+    male: 'Male',
+    female: 'Female',
+    
+    // CreatePanel - LM Backend & Model
+    lmBackendLabel: 'LM Backend',
+    lmBackendPt: 'PT (~1.6 GB VRAM)',
+    lmBackendVllm: 'VLLM (~9.2 GB VRAM)',
+    lmBackendHint: 'PT uses less VRAM, VLLM may be faster on powerful GPUs',
+    lmModelLabel: 'LM Model',
+    lmModel06B: '0.6B (Lightest, ~0.5 GB VRAM)',
+    lmModel17B: '1.7B (Balanced, ~1.5 GB VRAM)',
+    lmModel4B: '4B (Best quality, ~4 GB VRAM)',
+    lmModelHint: 'Controls the LLM used for lyrics/style enhancement. Auto-downloads if not present.',
+    
+    // CreatePanel - Transcription
+    transcribing: 'Transcribing...',
+    transcribingWithWhisper: 'Transcribing with Whisper…',
+    
+    // CreatePanel - Library Tabs
+    uploaded: 'Uploaded',
+    createdTab: 'Created',
+    useTrack: 'Use',
+    noCreatedSongsYet: 'No created songs yet',
+    generateSongsToReuse: 'Generate songs to reuse them as cover or reference',
+    
     // CreatePanel - Actions
     generate: 'Generate',
     generating: 'Generating...',
@@ -814,6 +849,41 @@ export const translations = {
     odeDeterministic: 'ODE（确定性）',
     sdeStochastic: 'SDE（随机性）',
     min: '分钟',
+    
+    // CreatePanel - Drag & Drop
+    dropToUseAudio: '拖放以使用音频',
+    dropToUpload: '拖放以上传',
+    usingAsReference: '用作参考',
+    usingAsCover: '用作翻唱',
+    uploadingAsReference: '上传为参考',
+    uploadingAsCover: '上传为翻唱',
+    
+    // CreatePanel - Vocal Gender
+    vocalGender: '人声性别',
+    male: '男声',
+    female: '女声',
+    
+    // CreatePanel - LM Backend & Model
+    lmBackendLabel: 'LM 后端',
+    lmBackendPt: 'PT（~1.6 GB 显存）',
+    lmBackendVllm: 'VLLM（~9.2 GB 显存）',
+    lmBackendHint: 'PT 显存占用更少，VLLM 在高性能 GPU 上可能更快',
+    lmModelLabel: 'LM 模型',
+    lmModel06B: '0.6B（最轻量，~0.5 GB 显存）',
+    lmModel17B: '1.7B（均衡，~1.5 GB 显存）',
+    lmModel4B: '4B（最佳质量，~4 GB 显存）',
+    lmModelHint: '控制用于歌词/风格增强的 LLM。如不存在将自动下载。',
+    
+    // CreatePanel - Transcription
+    transcribing: '转录中...',
+    transcribingWithWhisper: '正在使用 Whisper 转录…',
+    
+    // CreatePanel - Library Tabs
+    uploaded: '已上传',
+    createdTab: '已创建',
+    useTrack: '使用',
+    noCreatedSongsYet: '暂无已创建歌曲',
+    generateSongsToReuse: '生成歌曲后可作为翻唱或参考使用',
     
     // CreatePanel - Actions
     generate: '生成',
@@ -1361,6 +1431,41 @@ export const translations = {
     sdeStochastic: 'SDE（確率的）',
     min: '分',
     
+    // CreatePanel - Drag & Drop
+    dropToUseAudio: 'ドロップしてオーディオを使用',
+    dropToUpload: 'ドロップしてアップロード',
+    usingAsReference: '参照として使用',
+    usingAsCover: 'カバーとして使用',
+    uploadingAsReference: '参照としてアップロード',
+    uploadingAsCover: 'カバーとしてアップロード',
+    
+    // CreatePanel - Vocal Gender
+    vocalGender: 'ボーカルの性別',
+    male: '男性',
+    female: '女性',
+    
+    // CreatePanel - LM Backend & Model
+    lmBackendLabel: 'LMバックエンド',
+    lmBackendPt: 'PT（〜1.6 GB VRAM）',
+    lmBackendVllm: 'VLLM（〜9.2 GB VRAM）',
+    lmBackendHint: 'PTはVRAMが少なく、VLLMは高性能GPUで高速',
+    lmModelLabel: 'LMモデル',
+    lmModel06B: '0.6B（最軽量、〜0.5 GB VRAM）',
+    lmModel17B: '1.7B（バランス、〜1.5 GB VRAM）',
+    lmModel4B: '4B（最高品質、〜4 GB VRAM）',
+    lmModelHint: '歌詞/スタイル強化に使用するLLMを制御。未インストールの場合自動ダウンロード。',
+    
+    // CreatePanel - Transcription
+    transcribing: '文字起こし中...',
+    transcribingWithWhisper: 'Whisperで文字起こし中…',
+    
+    // CreatePanel - Library Tabs
+    uploaded: 'アップロード済み',
+    createdTab: '作成済み',
+    useTrack: '使用',
+    noCreatedSongsYet: '作成した曲がまだありません',
+    generateSongsToReuse: '曲を生成してカバーや参照として再利用',
+    
     // CreatePanel - Actions
     generate: '生成',
     generating: '生成中...',
@@ -1900,6 +2005,41 @@ export const translations = {
     odeDeterministic: 'ODE (결정론적)',
     sdeStochastic: 'SDE (확률적)',
     min: '분',
+    
+    // CreatePanel - Drag & Drop
+    dropToUseAudio: '드롭하여 오디오 사용',
+    dropToUpload: '드롭하여 업로드',
+    usingAsReference: '참조로 사용',
+    usingAsCover: '커버로 사용',
+    uploadingAsReference: '참조로 업로드',
+    uploadingAsCover: '커버로 업로드',
+    
+    // CreatePanel - Vocal Gender
+    vocalGender: '보컬 성별',
+    male: '남성',
+    female: '여성',
+    
+    // CreatePanel - LM Backend & Model
+    lmBackendLabel: 'LM 백엔드',
+    lmBackendPt: 'PT (~1.6 GB VRAM)',
+    lmBackendVllm: 'VLLM (~9.2 GB VRAM)',
+    lmBackendHint: 'PT는 VRAM이 적고, VLLM은 고성능 GPU에서 더 빠름',
+    lmModelLabel: 'LM 모델',
+    lmModel06B: '0.6B (가장 가벼움, ~0.5 GB VRAM)',
+    lmModel17B: '1.7B (균형, ~1.5 GB VRAM)',
+    lmModel4B: '4B (최고 품질, ~4 GB VRAM)',
+    lmModelHint: '가사/스타일 향상에 사용되는 LLM을 제어. 없으면 자동 다운로드.',
+    
+    // CreatePanel - Transcription
+    transcribing: '전사 중...',
+    transcribingWithWhisper: 'Whisper로 전사 중…',
+    
+    // CreatePanel - Library Tabs
+    uploaded: '업로드됨',
+    createdTab: '생성됨',
+    useTrack: '사용',
+    noCreatedSongsYet: '생성된 곡이 아직 없습니다',
+    generateSongsToReuse: '곡을 생성하여 커버나 참조로 재사용',
     
     // CreatePanel - Actions
     generate: '생성',

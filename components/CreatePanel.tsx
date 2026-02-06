@@ -220,20 +220,30 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   const [isLoraLoading, setIsLoraLoading] = useState(false);
 
   // Model selection
-  const [selectedModel, setSelectedModel] = useState<string>('acestep-v15-sft');
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    return localStorage.getItem('ace-model') || 'acestep-v15-turbo-shift3';
+  });
   const [showModelMenu, setShowModelMenu] = useState(false);
   const modelMenuRef = useRef<HTMLDivElement>(null);
   const previousModelRef = useRef<string>(selectedModel);
   
-  // Available models (fixed list from checkpoints directory)
-  const availableModels = useMemo(() => [
-    { id: 'acestep-v15-base', name: 'acestep-v15-base' },
-    { id: 'acestep-v15-sft', name: 'acestep-v15-sft' },
-    { id: 'acestep-v15-turbo', name: 'acestep-v15-turbo' },
-    { id: 'acestep-v15-turbo-shift1', name: 'acestep-v15-turbo-shift1' },
-    { id: 'acestep-v15-turbo-shift3', name: 'acestep-v15-turbo-shift3' },
-    { id: 'acestep-v15-turbo-continuous', name: 'acestep-v15-turbo-continuous' },
-  ], []);
+  // Available models fetched from backend
+  const [fetchedModels, setFetchedModels] = useState<{ name: string; is_active: boolean; is_preloaded: boolean }[]>([]);
+
+  // Fallback model list when backend is unavailable
+  const availableModels = useMemo(() => {
+    if (fetchedModels.length > 0) {
+      return fetchedModels.map(m => ({ id: m.name, name: m.name }));
+    }
+    return [
+      { id: 'acestep-v15-base', name: 'acestep-v15-base' },
+      { id: 'acestep-v15-sft', name: 'acestep-v15-sft' },
+      { id: 'acestep-v15-turbo', name: 'acestep-v15-turbo' },
+      { id: 'acestep-v15-turbo-shift1', name: 'acestep-v15-turbo-shift1' },
+      { id: 'acestep-v15-turbo-shift3', name: 'acestep-v15-turbo-shift3' },
+      { id: 'acestep-v15-turbo-continuous', name: 'acestep-v15-turbo-continuous' },
+    ];
+  }, [fetchedModels]);
 
   // Map model ID to short display name
   const getModelDisplayName = (modelId: string): string => {
@@ -357,10 +367,11 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     previousModelRef.current = selectedModel;
   }, [selectedModel, loraLoaded]);
 
-  // Auto-disable thinking when LoRA is loaded
+  // Auto-disable thinking and ADG when LoRA is loaded
   useEffect(() => {
-    if (loraLoaded && thinking) {
-      setThinking(false);
+    if (loraLoaded) {
+      if (thinking) setThinking(false);
+      if (useAdg) setUseAdg(false);
     }
   }, [loraLoaded]);
 
@@ -384,7 +395,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
       } else {
         const result = await generateApi.loadLora({ lora_path: loraPath }, token);
         setLoraLoaded(true);
-        console.log('LoRA loaded:', result.message);
+        console.log('LoRA loaded:', result?.message);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'LoRA operation failed';
@@ -404,7 +415,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     try {
       const result = await generateApi.unloadLora(token);
       setLoraLoaded(false);
-      console.log('LoRA unloaded:', result.message);
+      console.log('LoRA unloaded:', result?.message);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to unload LoRA';
       setLoraError(message);
@@ -494,8 +505,32 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     };
   }, [isResizing]);
 
+  const refreshModels = useCallback(async () => {
+    try {
+      const modelsRes = await fetch('/api/generate/models');
+      if (modelsRes.ok) {
+        const data = await modelsRes.json();
+        const models = data.models || [];
+        if (models.length > 0) {
+          setFetchedModels(models);
+          // Always sync to the backend's active model
+          const active = models.find((m: any) => m.is_active);
+          if (active) {
+            setSelectedModel(active.name);
+            localStorage.setItem('ace-model', active.name);
+          }
+        }
+      }
+    } catch {
+      // ignore - will use fallback model list
+    }
+  }, []);
+
   useEffect(() => {
-    const loadLimits = async () => {
+    const loadModelsAndLimits = async () => {
+      await refreshModels();
+
+      // Fetch limits
       try {
         const response = await fetch('/api/generate/limits');
         if (!response.ok) return;
@@ -511,8 +546,17 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
       }
     };
 
-    loadLimits();
+    loadModelsAndLimits();
   }, []);
+
+  // Re-fetch models after generation completes to update active model
+  const prevIsGeneratingRef = useRef(isGenerating);
+  useEffect(() => {
+    if (prevIsGeneratingRef.current && !isGenerating) {
+      void refreshModels();
+    }
+    prevIsGeneratingRef.current = isGenerating;
+  }, [isGenerating, refreshModels]);
 
   const activeMaxDuration = thinking ? maxDurationWithLm : maxDurationWithoutLm;
 
@@ -1000,12 +1044,12 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 </div>
               )}
               <div className="text-sm font-semibold text-zinc-900 dark:text-white">
-                {dragKind === 'audio' ? 'Drop to use audio' : 'Drop to upload'}
+                {dragKind === 'audio' ? t('dropToUseAudio') : t('dropToUpload')}
               </div>
               <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
                 {dragKind === 'audio'
-                  ? `Using as ${audioTab === 'reference' ? 'Reference' : 'Cover'}`
-                  : `Uploading as ${audioTab === 'reference' ? 'Reference' : 'Cover'}`}
+                  ? (audioTab === 'reference' ? t('usingAsReference') : t('usingAsCover'))
+                  : (audioTab === 'reference' ? t('uploadingAsReference') : t('uploadingAsCover'))}
               </div>
             </div>
           </div>
@@ -1089,6 +1133,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                         key={model.id}
                         onClick={() => {
                           setSelectedModel(model.id);
+                          localStorage.setItem('ace-model', model.id);
                           // Auto-adjust parameters for non-turbo models
                           if (!isTurboModel(model.id)) {
                             setInferenceSteps(20);
@@ -1101,9 +1146,16 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-semibold text-zinc-900 dark:text-white">
-                            {getModelDisplayName(model.id)}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-zinc-900 dark:text-white">
+                              {getModelDisplayName(model.id)}
+                            </span>
+                            {fetchedModels.find(m => m.name === model.id)?.is_preloaded && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                                {fetchedModels.find(m => m.name === model.id)?.is_active ? '● Active' : '● Ready'}
+                              </span>
+                            )}
+                          </div>
                           {selectedModel === model.id && (
                             <div className="w-4 h-4 rounded-full bg-pink-500 flex items-center justify-center">
                               <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -1159,14 +1211,14 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                     onClick={() => setVocalGender(vocalGender === 'male' ? '' : 'male')}
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${vocalGender === 'male' ? 'bg-pink-600 text-white border-pink-600' : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-white/20'}`}
                   >
-                    Male
+                    {t('male')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setVocalGender(vocalGender === 'female' ? '' : 'female')}
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${vocalGender === 'female' ? 'bg-pink-600 text-white border-pink-600' : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-white/20'}`}
                   >
-                    Female
+                    {t('female')}
                   </button>
                 </div>
               </div>
@@ -1186,7 +1238,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 min={-1}
                 max={600}
                 step={5}
-                onChange={(e) => setDuration(Number(e.target.value))}
+                onChange={setDuration}
                 formatDisplay={(val) => val === -1 ? t('auto') : `${val}${t('seconds')}`}
                 title={''}
                 autoLabel={t('auto')}
@@ -1210,7 +1262,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                   <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('key')}</label>
                   <select
                     value={keyScale}
-                    onChange={(e) => setKeyScale(e.target.value)}
+                    onChange={setKeyScale}
                     className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
                   >
                     <option value="">Auto</option>
@@ -1223,7 +1275,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                   <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('time')}</label>
                   <select
                     value={timeSignature}
-                    onChange={(e) => setTimeSignature(e.target.value)}
+                    onChange={setTimeSignature}
                     className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
                   >
                     <option value="">Auto</option>
@@ -1250,7 +1302,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                   max="8"
                   step="1"
                   value={batchSize}
-                  onChange={(e) => { const v = Number(e.target.value); setBatchSize(v); localStorage.setItem('ace-batchSize', String(v)); }}
+                  onChange={setBatchSize}
                   className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-pink-500"
                 />
                 <p className="text-[10px] text-zinc-500">{t('numberOfVariations')}</p>
@@ -1669,7 +1721,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide px-1">
-                  Vocal Gender
+                  {t('vocalGender')}
                 </label>
                 <div className="flex items-center gap-2">
                   <button
@@ -1677,14 +1729,14 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                     onClick={() => setVocalGender(vocalGender === 'male' ? '' : 'male')}
                     className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${vocalGender === 'male' ? 'bg-pink-600 text-white border-pink-600' : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-white/20'}`}
                   >
-                    Male
+                    {t('male')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setVocalGender(vocalGender === 'female' ? '' : 'female')}
                     className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${vocalGender === 'female' ? 'bg-pink-600 text-white border-pink-600' : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-white/20'}`}
                   >
-                    Female
+                    {t('female')}
                   </button>
                 </div>
               </div>
@@ -1842,7 +1894,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               min={-1}
               max={600}
               step={5}
-              onChange={(e) => setDuration(Number(e.target.value))}
+              onChange={setDuration}
               formatDisplay={(val) => val === -1 ? t('auto') : `${val}${t('seconds')}`}
               autoLabel={t('auto')}
               helpText={`${t('auto')} - 10 ${t('min')}`}
@@ -1855,7 +1907,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               min={1}
               max={8}
               step={1}
-              onChange={(e) => { const v = Number(e.target.value); setBatchSize(v); localStorage.setItem('ace-batchSize', String(v)); }}
+              onChange={setBatchSize}
               helpText={t('numberOfVariations')}
               title="Creates multiple variations in a single run. More variations = longer total time."
             />
@@ -1939,31 +1991,31 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
 
             {/* LM Backend */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">LM Backend</label>
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('lmBackendLabel')}</label>
               <select
                 value={lmBackend}
                 onChange={(e) => setLmBackend(e.target.value as 'pt' | 'vllm')}
                 className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none"
               >
-                <option value="pt">PT (~1.6 GB VRAM)</option>
-                <option value="vllm">VLLM (~9.2 GB VRAM)</option>
+                <option value="pt">{t('lmBackendPt')}</option>
+                <option value="vllm">{t('lmBackendVllm')}</option>
               </select>
-              <p className="text-[10px] text-zinc-500">PT uses less VRAM, VLLM may be faster on powerful GPUs</p>
+              <p className="text-[10px] text-zinc-500">{t('lmBackendHint')}</p>
             </div>
 
             {/* LM Model */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">LM Model</label>
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('lmModelLabel')}</label>
               <select
                 value={lmModel}
                 onChange={(e) => { const v = e.target.value; setLmModel(v); localStorage.setItem('ace-lmModel', v); }}
                 className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none"
               >
-                <option value="acestep-5Hz-lm-0.6B">0.6B (Lightest, ~0.5 GB VRAM)</option>
-                <option value="acestep-5Hz-lm-1.7B">1.7B (Balanced, ~1.5 GB VRAM)</option>
-                <option value="acestep-5Hz-lm-4B">4B (Best quality, ~4 GB VRAM)</option>
+                <option value="acestep-5Hz-lm-0.6B">{t('lmModel06B')}</option>
+                <option value="acestep-5Hz-lm-1.7B">{t('lmModel17B')}</option>
+                <option value="acestep-5Hz-lm-4B">{t('lmModel4B')}</option>
               </select>
-              <p className="text-[10px] text-zinc-500">Controls the LLM used for lyrics/style enhancement. Auto-downloads if not present.</p>
+              <p className="text-[10px] text-zinc-500">{t('lmModelHint')}</p>
             </div>
 
             {/* Seed */}
@@ -2013,7 +2065,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               min={1}
               max={5}
               step={0.1}
-              onChange={(e) => setShift(Number(e.target.value))}
+              onChange={setShift}
               formatDisplay={(val) => val.toFixed(1)}
               helpText={t('timestepShiftForBase')}
               title="Adjusts the diffusion schedule. Only affects base model."
@@ -2065,7 +2117,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                   min={1}
                   max={3}
                   step={0.1}
-                  onChange={(e) => setLmCfgScale(Number(e.target.value))}
+                  onChange={setLmCfgScale}
                   formatDisplay={(val) => val.toFixed(1)}
                   helpText={t('noCfgScale')}
                   title="How strongly the lyric model follows the prompt."
@@ -2079,7 +2131,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                     min={0}
                     max={100}
                     step={1}
-                    onChange={(e) => setLmTopK(Number(e.target.value))}
+                    onChange={setLmTopK}
                     title="Restricts choices to the K most likely tokens. 0 disables."
                   />
                   <EditableSlider
@@ -2088,7 +2140,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                     min={0}
                     max={1}
                     step={0.01}
-                    onChange={(e) => setLmTopP(Number(e.target.value))}
+                    onChange={setLmTopP}
                     formatDisplay={(val) => val.toFixed(2)}
                     title="Samples from the smallest set whose total probability is P."
                   />
@@ -2372,7 +2424,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 ) : isTranscribingReference ? (
                   <>
                     <RefreshCw size={16} className="animate-spin" />
-                    Transcribing...
+                    {t('transcribing')}
                   </>
                 ) : (
                   <>
@@ -2388,13 +2440,13 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               )}
               {isTranscribingReference && (
                 <div className="mt-2 flex items-center justify-between text-xs text-zinc-400">
-                  <span>Transcribing with Whisper…</span>
+                  <span>{t('transcribingWithWhisper')}</span>
                   <button
                     type="button"
                     onClick={cancelTranscription}
                     className="text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                 </div>
               )}
@@ -2413,7 +2465,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
                   >
-                    Uploaded
+                    {t('uploaded')}
                   </button>
                   <button
                     type="button"
@@ -2424,7 +2476,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
                   >
-                    Created
+                    {t('createdTab')}
                   </button>
                 </div>
               </div>
@@ -2520,7 +2572,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                               onClick={() => useReferenceTrack({ audio_url: track.audio_url, title: track.filename })}
                               className="px-3 py-1.5 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
                             >
-                              Use
+                              {t('useTrack')}
                             </button>
                             <button
                               type="button"
@@ -2537,8 +2589,8 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 ) : createdTrackOptions.length === 0 ? (
                   <div className="px-5 py-8 text-center">
                     <Music2 size={24} className="mx-auto text-zinc-300 dark:text-zinc-600" />
-                    <p className="text-sm text-zinc-400 mt-2">No created songs yet</p>
-                    <p className="text-xs text-zinc-400 mt-1">Generate songs to reuse them as cover or reference</p>
+                    <p className="text-sm text-zinc-400 mt-2">{t('noCreatedSongsYet')}</p>
+                    <p className="text-xs text-zinc-400 mt-1">{t('generateSongsToReuse')}</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-zinc-100 dark:divide-white/5">
@@ -2602,7 +2654,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                             onClick={() => useReferenceTrack({ audio_url: track.audio_url, title: track.title })}
                             className="px-3 py-1.5 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
                           >
-                            Use
+                            {t('useTrack')}
                           </button>
                         </div>
                       </div>

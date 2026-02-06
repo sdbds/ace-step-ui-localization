@@ -344,7 +344,9 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
         infer_method: params.inferMethod || 'ode',
         shift: params.shift,
         audio_format: params.audioFormat || 'mp3',
-        ...(params.loraLoaded ? {} : {
+        ...(!params.loraLoaded && params.thinking ? {
+          lm_model_path: params.lmModel || undefined,
+          lm_backend: params.lmBackend || 'pt',
           lm_temperature: params.lmTemperature,
           lm_cfg_scale: params.lmCfgScale,
           lm_top_k: params.lmTopK,
@@ -352,7 +354,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
           lm_negative_prompt: params.lmNegativePrompt,
           use_cot_caption: params.useCotCaption !== false,
           use_cot_language: params.useCotLanguage !== false,
-        }),
+        } : {}),
       }),
     });
 
@@ -685,6 +687,27 @@ router.get('/history', authMiddleware, async (req: AuthenticatedRequest, res: Re
   } catch (error) {
     console.error('Get history error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/models', async (_req, res: Response) => {
+  try {
+    const modelsResponse = await fetch(`${config.acestep.apiUrl}/v1/models`, {
+      headers: {
+        'x-api-key': process.env.ACESTEP_API_KEY || '',
+      },
+    });
+
+    if (!modelsResponse.ok) {
+      res.status(modelsResponse.status).json({ error: 'Failed to fetch models' });
+      return;
+    }
+
+    const result = await modelsResponse.json();
+    res.json(result.data || result);
+  } catch (error) {
+    console.error('Models proxy error:', error);
+    res.status(500).json({ error: 'Failed to fetch models from backend' });
   }
 });
 

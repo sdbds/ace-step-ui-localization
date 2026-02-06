@@ -136,6 +136,7 @@ async function submitToApi(params: GenerationParams): Promise<{ taskId: string }
     use_cot_caption: false, // Explicitly disable CoT features that require LLM
     use_cot_language: false, // Explicitly disable CoT features that require LLM
     use_cot_metas: false, // Explicitly disable CoT features that require LLM
+    dit_model: params.model || undefined,
     lm_backend: params.lmBackend || 'pt',
     lm_model_path: params.lmModel || undefined,
   };

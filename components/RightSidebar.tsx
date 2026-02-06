@@ -219,14 +219,14 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpe
                                                 disabled={isSavingTitle}
                                                 className="px-3 py-1.5 rounded-md text-xs font-semibold bg-pink-600 text-white hover:bg-pink-700 disabled:opacity-60"
                                             >
-                                                {isSavingTitle ? 'Saving...' : 'Save'}
+                                                {isSavingTitle ? t('saving') : t('save')}
                                             </button>
                                             <button
                                                 onClick={cancelTitleEdit}
                                                 disabled={isSavingTitle}
                                                 className="px-3 py-1.5 rounded-md text-xs font-semibold bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-white/10 dark:text-zinc-200 dark:hover:bg-white/20 disabled:opacity-60"
                                             >
-                                                Cancel
+                                                {t('cancel')}
                                             </button>
                                             {titleError && (
                                                 <span className="text-xs text-red-500">{titleError}</span>

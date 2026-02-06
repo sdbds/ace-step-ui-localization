@@ -46,7 +46,7 @@ async function proxyToAceStep(endpoint: string, method: string, data?: any) {
 router.post('/load', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await proxyToAceStep('/v1/lora/load', 'POST', req.body);
-    res.json(result);
+    res.json(result || { message: 'LoRA loaded' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -55,7 +55,7 @@ router.post('/load', authMiddleware, async (req: AuthenticatedRequest, res: Resp
 router.post('/unload', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await proxyToAceStep('/v1/lora/unload', 'POST');
-    res.json(result);
+    res.json(result || { message: 'LoRA unloaded' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
