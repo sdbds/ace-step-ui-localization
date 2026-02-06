@@ -364,13 +364,12 @@ export const generateApi = {
     lmModel?: string;
     lmBackend?: string;
   }, token: string): Promise<{
-    success: boolean;
     caption?: string;
     lyrics?: string;
     bpm?: number;
     duration?: number;
     key_scale?: string;
-    language?: string;
+    vocal_language?: string;
     time_signature?: string;
     status_message?: string;
     error?: string;

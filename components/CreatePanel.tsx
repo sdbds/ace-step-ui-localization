@@ -681,15 +681,18 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         lmBackend: lmBackend || 'pt',
       }, token);
 
-      if (result.success) {
+      if (result.caption || result.lyrics || result.bpm || result.duration) {
         // Update fields with LLM-generated values
         if (target === 'style' && result.caption) setStyle(result.caption);
         if (target === 'lyrics' && result.lyrics) setLyrics(result.lyrics);
         if (result.bpm && result.bpm > 0) setBpm(result.bpm);
         if (result.duration && result.duration > 0) setDuration(result.duration);
         if (result.key_scale) setKeyScale(result.key_scale);
-        if (result.time_signature) setTimeSignature(result.time_signature);
-        if (result.language) setVocalLanguage(result.language);
+        if (result.time_signature) {
+          const ts = String(result.time_signature);
+          setTimeSignature(ts.includes('/') ? ts : `${ts}/4`);
+        }
+        if (result.vocal_language) setVocalLanguage(result.vocal_language);
         if (target === 'style') setIsFormatCaption(true);
       } else {
         console.error('Format failed:', result.error || result.status_message);
@@ -1557,14 +1560,6 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                     onClick={refreshMusicTags}
                   >
                     <Dices size={14} />
-                  </button>
-                  <button
-                    className={`p-1.5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded transition-colors ${isFormattingLyrics ? 'text-pink-500 animate-pulse' : 'text-zinc-500 hover:text-black dark:hover:text-white'}`}
-                    title="AI Format - Enhance style & auto-fill parameters"
-                    onClick={handleFormat}
-                    disabled={isFormattingLyrics || !style.trim()}
-                  >
-                    <Sparkles size={14} />
                   </button>
                   <button
                     className="p-1.5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded text-zinc-500 hover:text-black dark:hover:text-white transition-colors"
