@@ -459,6 +459,15 @@ export const translations = {
     extractStems: 'Extract Stems',
     reusePrompt: 'Reuse Prompt',
     deleteSong: 'Delete Song',
+    useAsReference: 'Use as Reference',
+    coverSong: 'Cover Song',
+    confirmDeleteTitle: 'Delete Song',
+    confirmDeleteManyTitle: 'Delete Songs',
+    deleteSongsConfirm: 'Delete {count} songs? This action cannot be undone.',
+    songsDeletedSuccess: 'Songs deleted successfully',
+    songsDeletedPartial: 'Deleted {succeeded}/{total} songs',
+    deleteUploadConfirm: 'Delete this upload? This action cannot be undone.',
+    cannotBeUndone: 'This action cannot be undone.',
     
     // Player
     nowPlaying: 'Now Playing',
@@ -1040,6 +1049,15 @@ export const translations = {
     extractStems: '提取音轨',
     reusePrompt: '重用提示词',
     deleteSong: '删除歌曲',
+    useAsReference: '用作参考',
+    coverSong: '翻唱歌曲',
+    confirmDeleteTitle: '删除歌曲',
+    confirmDeleteManyTitle: '删除歌曲',
+    deleteSongsConfirm: '确定要删除 {count} 首歌曲吗？此操作无法撤销。',
+    songsDeletedSuccess: '歌曲删除成功',
+    songsDeletedPartial: '已删除 {succeeded}/{total} 首歌曲',
+    deleteUploadConfirm: '确定要删除此上传文件吗？此操作无法撤销。',
+    cannotBeUndone: '此操作无法撤销。',
     
     // Player
     nowPlaying: '正在播放',
@@ -1485,6 +1503,12 @@ export const translations = {
     loginToGenerate: '音楽を生成するにはログインしてください',
     uploadFailed: 'アップロードに失敗しました',
     formatFailed: 'フォーマットに失敗しました',
+    formatFailedDetail: 'フォーマットに失敗しました。LLMが初期化されていることを確認してください。',
+    formatFailedLlmUnavailable: 'フォーマットに失敗しました。LLMが利用できない可能性があります。',
+    deleteSongConfirm: '「{title}」を削除しますか？この操作は元に戻せません。',
+    profileUpdateFailed: 'プロフィールの更新に失敗しました',
+    ffmpegLoadFailed: 'ビデオエンコーダーの読み込みに失敗しました。更新してもう一度お試しください。',
+    videoRenderFailed: 'ビデオレンダリングに失敗しました。もう一度お試しください。',
     
     // SongList / Filters
     searchYourSongs: '曲を検索...',
@@ -1615,6 +1639,15 @@ export const translations = {
     extractStems: 'ステムを抽出',
     reusePrompt: 'プロンプトを再利用',
     deleteSong: '曲を削除',
+    useAsReference: '参照として使用',
+    coverSong: 'カバーソング',
+    confirmDeleteTitle: '曲を削除',
+    confirmDeleteManyTitle: '曲を削除',
+    deleteSongsConfirm: '{count}曲を削除しますか？この操作は元に戻せません。',
+    songsDeletedSuccess: '曲を削除しました',
+    songsDeletedPartial: '{succeeded}/{total}曲を削除しました',
+    deleteUploadConfirm: 'このアップロードを削除しますか？この操作は元に戻せません。',
+    cannotBeUndone: 'この操作は元に戻せません。',
     
     // Player
     nowPlaying: '再生中',
@@ -2060,6 +2093,12 @@ export const translations = {
     loginToGenerate: '음악을 생성하려면 로그인하세요',
     uploadFailed: '업로드 실패',
     formatFailed: '포맷 실패',
+    formatFailedDetail: '포맷 실패. LLM이 초기화되었는지 확인하세요.',
+    formatFailedLlmUnavailable: '포맷 실패. LLM을 사용할 수 없을 수 있습니다.',
+    deleteSongConfirm: '「{title}」을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+    profileUpdateFailed: '프로필 업데이트에 실패했습니다',
+    ffmpegLoadFailed: '비디오 인코더 로드에 실패했습니다. 새로고침 후 다시 시도하세요.',
+    videoRenderFailed: '비디오 렌더링에 실패했습니다. 다시 시도하세요.',
     
     // SongList / Filters
     searchYourSongs: '곡 검색...',
@@ -2190,6 +2229,15 @@ export const translations = {
     extractStems: '스템 추출',
     reusePrompt: '프롬프트 재사용',
     deleteSong: '곡 삭제',
+    useAsReference: '참조로 사용',
+    coverSong: '커버 곡',
+    confirmDeleteTitle: '곡 삭제',
+    confirmDeleteManyTitle: '곡 삭제',
+    deleteSongsConfirm: '{count}곡을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+    songsDeletedSuccess: '곡이 삭제되었습니다',
+    songsDeletedPartial: '{succeeded}/{total}곡 삭제됨',
+    deleteUploadConfirm: '이 업로드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+    cannotBeUndone: '이 작업은 되돌릴 수 없습니다.',
     
     // Player
     nowPlaying: '재생 중',

@@ -201,7 +201,7 @@ export const SongDropdownMenu: React.FC<SongDropdownMenuProps> = ({
             {onUseAsReference && (
                 <MenuItem
                     icon={<Layers size={14} />}
-                    label="Use as Reference"
+                    label={t('useAsReference')}
                     onClick={() => handleAction(onUseAsReference)}
                     disabled={!song.audioUrl}
                 />
@@ -209,7 +209,7 @@ export const SongDropdownMenu: React.FC<SongDropdownMenuProps> = ({
             {onCoverSong && (
                 <MenuItem
                     icon={<Layers size={14} />}
-                    label="Cover Song"
+                    label={t('coverSong')}
                     onClick={() => handleAction(onCoverSong)}
                     disabled={!song.audioUrl}
                 />
