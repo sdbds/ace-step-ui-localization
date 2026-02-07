@@ -14,6 +14,7 @@ async function proxyToAceStep(endpoint: string, method: string, data?: any) {
     
     if (ACESTEP_API_KEY) {
       headers['x-api-key'] = ACESTEP_API_KEY;
+      headers['Authorization'] = `Bearer ${ACESTEP_API_KEY}`;
     }
 
     const options: RequestInit = {
@@ -28,14 +29,25 @@ async function proxyToAceStep(endpoint: string, method: string, data?: any) {
     const response = await fetch(`${ACESTEP_API_URL}${endpoint}`, options);
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error(errorData.error || errorData.message || 'Request failed');
+      const errorData: any = await response.json().catch(() => ({ error: 'Request failed' }));
+      const detail = errorData?.detail;
+      const detailMsg = typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((d: any) => d?.msg || JSON.stringify(d)).join('; ')
+          : undefined;
+      throw new Error(errorData?.error || errorData?.message || detailMsg || 'Request failed');
     }
 
     const result = await response.json();
     
-    if (result && typeof result === 'object' && 'data' in result) {
-      return result.data;
+    if (result && typeof result === 'object') {
+      if ('code' in result && result.code && result.code !== 200) {
+        throw new Error(result.error || result.message || 'Request failed');
+      }
+      if ('data' in result) {
+        return result.data;
+      }
     }
     return result;
   } catch (error: any) {

@@ -742,6 +742,30 @@ export const trainingApi = {
     fp8_enabled?: boolean;
   }> => api('/api/training/start', { method: 'POST', body: params, token }),
 
+  startLoKRTraining: (params: {
+    tensor_dir: string;
+    lokr_linear_dim?: number;
+    lokr_linear_alpha?: number;
+    lokr_factor?: number;
+    lokr_decompose_both?: boolean;
+    lokr_use_tucker?: boolean;
+    lokr_use_scalar?: boolean;
+    lokr_weight_decompose?: boolean;
+    learning_rate?: number;
+    train_epochs?: number;
+    train_batch_size?: number;
+    gradient_accumulation?: number;
+    save_every_n_epochs?: number;
+    training_shift?: number;
+    training_seed?: number;
+    output_dir?: string;
+  }, token: string): Promise<{
+    message: string;
+    tensor_dir: string;
+    output_dir: string;
+    config: any;
+  }> => api('/api/training/start_lokr', { method: 'POST', body: params, token }),
+
   stopTraining: (token: string): Promise<{
     message: string;
   }> => api('/api/training/stop', { method: 'POST', token }),

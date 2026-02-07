@@ -91,6 +91,18 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
     is_instrumental: false,
   });
   
+  // Adapter Type
+  const [adapterType, setAdapterType] = useState<'lora' | 'lokr'>('lora');
+
+  // LoKR Settings
+  const [lokrLinearDim, setLokrLinearDim] = useState(64);
+  const [lokrLinearAlpha, setLokrLinearAlpha] = useState(128);
+  const [lokrFactor, setLokrFactor] = useState(-1);
+  const [lokrDecomposeBoth, setLokrDecomposeBoth] = useState(false);
+  const [lokrUseTucker, setLokrUseTucker] = useState(false);
+  const [lokrUseScalar, setLokrUseScalar] = useState(false);
+  const [lokrWeightDecompose, setLokrWeightDecompose] = useState(false);
+
   // Training State
   const [trainingTensorDir, setTrainingTensorDir] = useState('./datasets/preprocessed_tensors');
   const [trainingDatasetInfo, setTrainingDatasetInfo] = useState('');
@@ -493,21 +505,43 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
     if (!token) return;
     setTrainingProgress(t('startingTraining'));
     try {
-      const result = await trainingApi.startTraining({
-        tensor_dir: trainingTensorDir,
-        lora_rank: loraRank,
-        lora_alpha: loraAlpha,
-        lora_dropout: loraDropout,
-        learning_rate: learningRate,
-        train_epochs: trainEpochs,
-        train_batch_size: trainBatchSize,
-        gradient_accumulation: gradientAccumulation,
-        save_every_n_epochs: saveEveryNEpochs,
-        training_shift: trainingShift,
-        training_seed: trainingSeed,
-        lora_output_dir: loraOutputDir,
-        use_fp8: useFP8,
-      }, token);
+      let result: any;
+      if (adapterType === 'lokr') {
+        result = await trainingApi.startLoKRTraining({
+          tensor_dir: trainingTensorDir,
+          lokr_linear_dim: lokrLinearDim,
+          lokr_linear_alpha: lokrLinearAlpha,
+          lokr_factor: lokrFactor,
+          lokr_decompose_both: lokrDecomposeBoth,
+          lokr_use_tucker: lokrUseTucker,
+          lokr_use_scalar: lokrUseScalar,
+          lokr_weight_decompose: lokrWeightDecompose,
+          learning_rate: learningRate,
+          train_epochs: trainEpochs,
+          train_batch_size: trainBatchSize,
+          gradient_accumulation: gradientAccumulation,
+          save_every_n_epochs: saveEveryNEpochs,
+          training_shift: trainingShift,
+          training_seed: trainingSeed,
+          output_dir: loraOutputDir,
+        }, token);
+      } else {
+        result = await trainingApi.startTraining({
+          tensor_dir: trainingTensorDir,
+          lora_rank: loraRank,
+          lora_alpha: loraAlpha,
+          lora_dropout: loraDropout,
+          learning_rate: learningRate,
+          train_epochs: trainEpochs,
+          train_batch_size: trainBatchSize,
+          gradient_accumulation: gradientAccumulation,
+          save_every_n_epochs: saveEveryNEpochs,
+          training_shift: trainingShift,
+          training_seed: trainingSeed,
+          lora_output_dir: loraOutputDir,
+          use_fp8: useFP8,
+        }, token);
+      }
       if (!result) {
         setTrainingProgress('Failed to start training: No response from server');
         return;
@@ -963,57 +997,182 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                 )}
               </div>
 
-              {/* LoRA Settings */}
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 rounded-xl p-4 space-y-4 border-2 border-purple-200 dark:border-purple-800 shadow-md">
-                <h3 className="text-base font-semibold text-zinc-900 dark:text-white">⚙️ {t('loraSettings')}</h3>
-                
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                      {t('loraRank')}: {loraRank}
-                    </label>
-                    <input
-                      type="range"
-                      min="4"
-                      max="256"
-                      step="4"
-                      value={loraRank}
-                      onChange={(e) => setLoraRank(Number(e.target.value))}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                      {t('loraAlpha')}: {loraAlpha}
-                    </label>
-                    <input
-                      type="range"
-                      min="4"
-                      max="512"
-                      step="4"
-                      value={loraAlpha}
-                      onChange={(e) => setLoraAlpha(Number(e.target.value))}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                      {t('dropout')}: {loraDropout.toFixed(2)}
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="0.5"
-                      step="0.05"
-                      value={loraDropout}
-                      onChange={(e) => setLoraDropout(Number(e.target.value))}
-                      className="w-full"
-                    />
-                  </div>
+              {/* Adapter Type Selector */}
+              <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 rounded-xl p-4 space-y-3 border-2 border-indigo-200 dark:border-indigo-800 shadow-md">
+                <h3 className="text-base font-semibold text-zinc-900 dark:text-white">🔧 {t('adapterType')}</h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setAdapterType('lora');
+                      setLoraOutputDir('./lora_output');
+                    }}
+                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                      adapterType === 'lora'
+                        ? 'bg-purple-600 text-white shadow-md'
+                        : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-700'
+                    }`}
+                  >
+                    LoRA
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAdapterType('lokr');
+                      setLoraOutputDir('./lokr_output');
+                    }}
+                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                      adapterType === 'lokr'
+                        ? 'bg-teal-600 text-white shadow-md'
+                        : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-700'
+                    }`}
+                  >
+                    LoKR
+                  </button>
                 </div>
               </div>
+
+              {/* Adapter Settings - LoRA or LoKR */}
+              {adapterType === 'lora' ? (
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 rounded-xl p-4 space-y-4 border-2 border-purple-200 dark:border-purple-800 shadow-md">
+                  <h3 className="text-base font-semibold text-zinc-900 dark:text-white">⚙️ {t('loraSettings')}</h3>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                        {t('loraRank')}: {loraRank}
+                      </label>
+                      <input
+                        type="range"
+                        min="4"
+                        max="256"
+                        step="4"
+                        value={loraRank}
+                        onChange={(e) => setLoraRank(Number(e.target.value))}
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                        {t('loraAlpha')}: {loraAlpha}
+                      </label>
+                      <input
+                        type="range"
+                        min="4"
+                        max="512"
+                        step="4"
+                        value={loraAlpha}
+                        onChange={(e) => setLoraAlpha(Number(e.target.value))}
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                        {t('dropout')}: {loraDropout.toFixed(2)}
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="0.5"
+                        step="0.05"
+                        value={loraDropout}
+                        onChange={(e) => setLoraDropout(Number(e.target.value))}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/30 dark:to-cyan-950/30 rounded-xl p-4 space-y-4 border-2 border-teal-200 dark:border-teal-800 shadow-md">
+                  <h3 className="text-base font-semibold text-zinc-900 dark:text-white">⚙️ {t('lokrSettings')}</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">{t('lokrDescription')}</p>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                        {t('linearDim')}: {lokrLinearDim}
+                      </label>
+                      <input
+                        type="range"
+                        min="4"
+                        max="256"
+                        step="4"
+                        value={lokrLinearDim}
+                        onChange={(e) => setLokrLinearDim(Number(e.target.value))}
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                        {t('linearAlpha')}: {lokrLinearAlpha}
+                      </label>
+                      <input
+                        type="range"
+                        min="4"
+                        max="512"
+                        step="4"
+                        value={lokrLinearAlpha}
+                        onChange={(e) => setLokrLinearAlpha(Number(e.target.value))}
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                        {t('factor')}: {lokrFactor === -1 ? t('factorAuto') : lokrFactor}
+                      </label>
+                      <input
+                        type="number"
+                        value={lokrFactor}
+                        onChange={(e) => setLokrFactor(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <label className="flex items-center gap-2 p-2 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={lokrDecomposeBoth}
+                        onChange={(e) => setLokrDecomposeBoth(e.target.checked)}
+                        className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
+                      />
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">{t('decomposeBoth')}</span>
+                    </label>
+                    <label className="flex items-center gap-2 p-2 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={lokrUseTucker}
+                        onChange={(e) => setLokrUseTucker(e.target.checked)}
+                        className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
+                      />
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">{t('useTucker')}</span>
+                    </label>
+                    <label className="flex items-center gap-2 p-2 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={lokrUseScalar}
+                        onChange={(e) => setLokrUseScalar(e.target.checked)}
+                        className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
+                      />
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">{t('useScalar')}</span>
+                    </label>
+                    <label className="flex items-center gap-2 p-2 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={lokrWeightDecompose}
+                        onChange={(e) => setLokrWeightDecompose(e.target.checked)}
+                        className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
+                      />
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">{t('weightDecompose')}</span>
+                    </label>
+                  </div>
+
+                  {/* Advanced LoKR Settings (collapsible) */}
+                </div>
+              )}
 
               {/* Training Parameters */}
               <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 rounded-xl p-4 space-y-4 border-2 border-orange-200 dark:border-orange-800 shadow-md">
@@ -1135,18 +1294,20 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                   />
                 </div>
 
-                <div className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                  <input
-                    type="checkbox"
-                    id="useFP8"
-                    checked={useFP8}
-                    onChange={(e) => setUseFP8(e.target.checked)}
-                    className="w-4 h-4 text-purple-600 bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 rounded focus:ring-purple-500"
-                  />
-                  <label htmlFor="useFP8" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">
-                    ⚡ {t('useFP8')} <span className="text-xs text-zinc-500 dark:text-zinc-400">({t('fp8Description')})</span>
-                  </label>
-                </div>
+                {adapterType === 'lora' && (
+                  <div className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                    <input
+                      type="checkbox"
+                      id="useFP8"
+                      checked={useFP8}
+                      onChange={(e) => setUseFP8(e.target.checked)}
+                      className="w-4 h-4 text-purple-600 bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 rounded focus:ring-purple-500"
+                    />
+                    <label htmlFor="useFP8" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                      ⚡ {t('useFP8')} <span className="text-xs text-zinc-500 dark:text-zinc-400">({t('fp8Description')})</span>
+                    </label>
+                  </div>
+                )}
               </div>
 
               {/* Training Controls */}
