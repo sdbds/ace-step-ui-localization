@@ -552,6 +552,8 @@ export const translations = {
     genreRatioHint: '0% = all Caption, 100% = all Genre',
     autoLabelWithAI: 'Auto-Label with AI',
     autoLabelDescription: 'Generate metadata for audio files: Caption, BPM, Key, Time Signature',
+    autoLabelChunkSize: 'Chunk Size',
+    autoLabelBatchSize: 'Batch Size',
     skipMetas: 'Skip BPM/Key/Time Signature',
     onlyUnlabeled: 'Only Unlabeled',
     autoLabelAll: 'Auto-Label All',
@@ -1156,6 +1158,8 @@ export const translations = {
     genreRatioHint: '0% = 全部描述，100% = 全部风格',
     autoLabelWithAI: 'AI 自动标注',
     autoLabelDescription: '为音频文件生成元数据：描述、BPM、调式、拍号',
+    autoLabelChunkSize: '分块大小',
+    autoLabelBatchSize: '批大小',
     skipMetas: '跳过 BPM/调式/拍号',
     onlyUnlabeled: '仅未标注',
     autoLabelAll: '自动标注全部',
@@ -1549,14 +1553,14 @@ export const translations = {
     selectSongToView: '詳細を表示する曲を選択',
     noSongsMatchFilters: 'フィルターに一致する曲がありません。',
     clearFilters: 'フィルターをクリア',
-    
+
     // RightSidebar - Song Details
     songDetails: '曲の詳細',
     created: '作成日',
     styleTags: 'スタイルとタグ',
     lyricsSection: '歌詞',
     copyLyrics: 'コピー',
-    
+
     // Languages
     japanese: '日本語',
     spanish: 'スペイン語',
@@ -1581,12 +1585,12 @@ export const translations = {
     swedish: 'スウェーデン語',
     romanian: 'ルーマニア語',
     greek: 'ギリシャ語',
-    
+
     // Task Types
     audio2audio: 'オーディオ → オーディオ',
     coverTask: 'カバー',
     repaintTask: 'リペイント',
-    
+
     // Search Page
     searchSongsPlaceholder: '曲、プレイリスト、クリエイター、スタイルを検索',
     songsMatching: '一致する曲',
@@ -1602,7 +1606,7 @@ export const translations = {
     noPlaylistsYet: '公開プレイリストがまだありません。作成してお気に入りを共有しましょう！',
     genres: 'ジャンル',
     songs: '曲',
-    
+
     // Library View
     yourLibrary: 'マイライブラリ',
     newPlaylist: '新しいプレイリスト',
@@ -1610,7 +1614,7 @@ export const translations = {
     playlists: 'プレイリスト',
     playlist: 'プレイリスト',
     byYou: 'あなたが作成',
-    
+
     // User Profile
     back: '戻る',
     loadingProfile: '読み込み中...',
@@ -1636,7 +1640,7 @@ export const translations = {
     uploadingBanner: 'バナーをアップロード中...',
     saving: '保存中...',
     saveChanges: '変更を保存',
-    
+
     // Playlist Modals
     createPlaylist: 'プレイリストを作成',
     playlistName: '名前',
@@ -1646,7 +1650,7 @@ export const translations = {
     addToPlaylist: 'プレイリストに追加',
     createNewPlaylist: '新しいプレイリストを作成',
     noExistingPlaylists: 'プレイリストがまだありません。',
-    
+
     // Edit Profile Modal (Settings)
     usernameLabel: 'ユーザー名',
     usernamePlaceholder: 'ユーザー名',
@@ -1654,13 +1658,13 @@ export const translations = {
     usernameTakenError: 'このユーザー名は既に使用されています',
     usernameUpdateFailedError: 'ユーザー名の更新に失敗しました',
     usernameRequirements: '文字、数字、アンダースコア、ハイフンのみ使用可能',
-    
+
     // Song Details (RightSidebar)
     more: 'もっと',
     copy: 'コピー',
     copied: 'コピーしました！',
     copyAllTags: 'すべてのタグをコピー',
-    
+
     // Song Dropdown Menu
     createVideo: 'ビデオを作成',
     editAudio: 'オーディオを編集',
@@ -1676,13 +1680,13 @@ export const translations = {
     songsDeletedPartial: '{succeeded}/{total}曲を削除しました',
     deleteUploadConfirm: 'このアップロードを削除しますか？この操作は元に戻せません。',
     cannotBeUndone: 'この操作は元に戻せません。',
-    
+
     // Player
     nowPlaying: '再生中',
     downloadAudio: 'オーディオをダウンロード',
     openInEditor: 'エディターで開く',
     anonymous: '匿名ユーザー',
-    
+
     // PlaylistDetail
     loadingPlaylist: 'プレイリストを読み込み中...',
     playlistNotFound: 'プレイリストが見つかりません',
@@ -1690,13 +1694,13 @@ export const translations = {
     dateAdded: '追加日',
     justNow: 'たった今',
     unknown: '不明',
-    
+
     // SongProfile
     loadingSong: '曲を読み込み中...',
     songNotFound: '曲が見つかりません',
     similar: '類似',
     by: '作成者',
-    
+
     // ShareModal
     shareSong: '曲を共有',
     shareOnX: 'Xで共有',
@@ -1709,7 +1713,7 @@ export const translations = {
     copyLink: 'リンクをコピー',
     emailSubject: 'このAI曲をチェックしてください',
     emailBody: 'こんにちは！\n\n私がこのAI生成の曲を作りました。気に入ってもらえると思います：\n\n「{title}」by {creator}\n{style}\n\nここで聴いてください：{url}\n\nACE-Step UIで作成 - 無料でオープンソースのローカルAI音楽生成！',
-    
+
     // Reference Modal
     referenceModalTitle: 'リファレンス',
     coverModalTitle: 'カバー',
@@ -1722,7 +1726,7 @@ export const translations = {
     loadingTracks: '読み込み中...',
     noTracksYet: 'トラックがまだありません',
     uploadAudioFilesAsReferences: 'リファレンスとして使用するオーディオファイルをアップロード',
-    
+
     // Training Module
     loraTraining: 'LoRAトレーニング',
     trainingDescription: 'オーディオファイルからデータセットを構築し、カスタムアダプターをトレーニング',
@@ -1760,6 +1764,8 @@ export const translations = {
     genreRatioHint: '0% = 全てキャプション、100% = 全てジャンル',
     autoLabelWithAI: 'AIで自動ラベル付け',
     autoLabelDescription: 'オーディオファイルのメタデータを生成：キャプション、BPM、キー、拍子',
+    autoLabelChunkSize: 'チャンクサイズ',
+    autoLabelBatchSize: 'バッチサイズ',
     skipMetas: 'BPM/キー/拍子をスキップ',
     onlyUnlabeled: 'ラベルなしのみ',
     autoLabelAll: '全て自動ラベル付け',
@@ -1792,7 +1798,7 @@ export const translations = {
     showTensorboard: 'TensorBoardを表示',
     hideTensorboard: 'TensorBoardを非表示',
     openInNewTab: '新しいタブで開く',
-    
+
     // Training Status Messages
     scanning: 'スキャン中...',
     autoLabeling: '自動ラベル付け中...',
@@ -1819,16 +1825,16 @@ export const translations = {
     library: '라이브러리',
     search: '검색',
     training: '훈련',
-    
+
     // Theme
     lightMode: '라이트 모드',
     darkMode: '다크 모드',
-    
+
     // Auth
     signIn: '로그인',
     signOut: '로그아웃',
     settings: '설정',
-    
+
     // Username Modal
     welcomeTitle: 'ACE-Step UI에 오신 것을 환영합니다',
     welcomeSubtitle: 'AI 음악 제작을 시작하려면 이름을 입력하세요',
@@ -1840,7 +1846,7 @@ export const translations = {
     usernameMinLength: '사용자 이름은 최소 2자 이상이어야 합니다',
     usernameInvalidChars: '사용자 이름은 문자, 숫자, 밑줄, 하이픈만 사용할 수 있습니다',
     failedToSetUsername: '사용자 이름 설정에 실패했습니다',
-    
+
     // Toasts
     songNotAvailable: '이 곡은 더 이상 사용할 수 없습니다.',
     unableToPlay: '이 곡을 재생할 수 없습니다.',
@@ -1852,10 +1858,10 @@ export const translations = {
     failedToAddSong: '곡 추가에 실패했습니다',
     songDeleted: '곡이 삭제되었습니다',
     failedToDeleteSong: '곡 삭제에 실패했습니다',
-    
+
     // Sidebar
     aceStepUI: 'ACE-Step UI',
-    
+
     // Common
     cancel: '취소',
     save: '저장',
@@ -1868,10 +1874,10 @@ export const translations = {
     normalSpeed: '보통',
     next: '다음',
     previous: '이전',
-    
+
     // Placeholders
     searchPlaceholder: '검색...',
-    
+
     // Settings
     language: '언어',
     english: 'English',
@@ -1895,15 +1901,15 @@ export const translations = {
     done: '완료',
     light: '라이트',
     dark: '다크',
-    
+
     // Mobile
     createSong: '곡 만들기',
     viewList: '목록 보기',
-    
+
     // CreatePanel - Modes
     simple: '간단',
     custom: '사용자 정의',
-    
+
     // CreatePanel - Sections
     audio: '오디오',
     lyrics: '가사',
@@ -1911,7 +1917,7 @@ export const translations = {
     title: '제목',
     musicParameters: '음악 매개변수',
     advancedSettings: '고급 설정',
-    
+
     // CreatePanel - LoRA
     loraPath: 'LoRA 경로',
     loraPathPlaceholder: 'LoRA 모델 경로 입력...',
@@ -1922,13 +1928,13 @@ export const translations = {
     loraUnload: '언로드',
     loraScale: 'LoRA 강도',
     loraScaleDescription: 'LoRA 모델의 영향 강도 조절',
-    
+
     // CreatePanel - Audio
     reference: '참조',
     cover: '커버',
     fromLibrary: '라이브러리에서',
     upload: '업로드',
-    
+
     // CreatePanel - Lyrics
     lyricsPlaceholder: '여기에 가사를 입력하세요...',
     leaveLyricsEmpty: '연주곡의 경우 비워두거나 아래 토글 사용',
@@ -1986,7 +1992,7 @@ export const translations = {
     vocalVietnamese: '베트남어',
     vocalCantonese: '광둥어',
     vocalChineseMandarin: '중국어（표준어）',
-    
+
     // CreatePanel - Style
     stylePlaceholder: '예: 경쾌한 팝 록, 감성적인 발라드, 90년대 힙합',
     genreMoodInstruments: '장르, 분위기, 악기, 느낌',
@@ -1994,7 +2000,7 @@ export const translations = {
     mainGenre: '주요 장르',
     subGenre: '하위 장르',
     nameSong: '곡 이름 짓기',
-    
+
     // CreatePanel - Parameters
     bpm: 'BPM',
     auto: '자동',
@@ -2002,7 +2008,7 @@ export const translations = {
     seconds: '초',
     keyScale: '키와 스케일',
     timeSignature: '박자',
-    
+
     // CreatePanel - Advanced
     randomSeed: '랜덤 시드',
     thinking: '생각',
@@ -2037,7 +2043,7 @@ export const translations = {
     useWhenCfgScaleGreater: 'LM CFG 스케일 > 1.0일 때 사용',
     lmTopK: 'LM Top-K',
     lmTopP: 'LM Top-P',
-    
+
     // Guidance section
     guidance: '가이던스',
     advancedCfgScheduling: '고급 CFG 스케줄링 제어.',
@@ -2080,7 +2086,7 @@ export const translations = {
     odeDeterministic: 'ODE (결정론적)',
     sdeStochastic: 'SDE (확률적)',
     min: '분',
-    
+
     // CreatePanel - Drag & Drop
     dropToUseAudio: '드롭하여 오디오 사용',
     dropToUpload: '드롭하여 업로드',
@@ -2088,12 +2094,12 @@ export const translations = {
     usingAsCover: '커버로 사용',
     uploadingAsReference: '참조로 업로드',
     uploadingAsCover: '커버로 업로드',
-    
+
     // CreatePanel - Vocal Gender
     vocalGender: '보컬 성별',
     male: '남성',
     female: '여성',
-    
+
     // CreatePanel - LM Backend & Model
     lmBackendLabel: 'LM 백엔드',
     lmBackendPt: 'PT (~1.6 GB VRAM)',
@@ -2104,18 +2110,18 @@ export const translations = {
     lmModel17B: '1.7B (균형, ~1.5 GB VRAM)',
     lmModel4B: '4B (최고 품질, ~4 GB VRAM)',
     lmModelHint: '가사/스타일 향상에 사용되는 LLM을 제어. 없으면 자동 다운로드.',
-    
+
     // CreatePanel - Transcription
     transcribing: '전사 중...',
     transcribingWithWhisper: 'Whisper로 전사 중…',
-    
+
     // CreatePanel - Library Tabs
     uploaded: '업로드됨',
     createdTab: '생성됨',
     useTrack: '사용',
     noCreatedSongsYet: '생성된 곡이 아직 없습니다',
     generateSongsToReuse: '곡을 생성하여 커버나 참조로 재사용',
-    
+
     // CreatePanel - Actions
     generate: '생성',
     generating: '생성 중...',
@@ -2123,14 +2129,14 @@ export const translations = {
     formatLyrics: '가사 포맷',
     formatting: '포맷 중...',
     clearAll: '모두 지우기',
-    
+
     // Simple Mode
     describeYourSong: '곡 설명',
     songDescriptionPlaceholder: '친구들과 여름 모험에 대한 밝은 팝송...',
     quickSettings: '빠른 설정',
     key: '키',
     time: '박자',
-    
+
     // CreatePanel - Errors
     loginToGenerate: '음악을 생성하려면 로그인하세요',
     uploadFailed: '업로드 실패',
@@ -2141,7 +2147,7 @@ export const translations = {
     profileUpdateFailed: '프로필 업데이트에 실패했습니다',
     ffmpegLoadFailed: '비디오 인코더 로드에 실패했습니다. 새로고침 후 다시 시도하세요.',
     videoRenderFailed: '비디오 렌더링에 실패했습니다. 다시 시도하세요.',
-    
+
     // SongList / Filters
     searchYourSongs: '곡 검색...',
     filters: '필터',
@@ -2153,14 +2159,14 @@ export const translations = {
     selectSongToView: '세부 정보를 볼 곡 선택',
     noSongsMatchFilters: '필터와 일치하는 곡이 없습니다.',
     clearFilters: '필터 지우기',
-    
+
     // RightSidebar - Song Details
     songDetails: '곡 상세정보',
     created: '생성일',
     styleTags: '스타일 및 태그',
     lyricsSection: '가사',
     copyLyrics: '복사',
-    
+
     // Languages
     japanese: '일본어',
     spanish: '스페인어',
@@ -2185,12 +2191,12 @@ export const translations = {
     swedish: '스웨덴어',
     romanian: '루마니아어',
     greek: '그리스어',
-    
+
     // Task Types
     audio2audio: '오디오 → 오디오',
     coverTask: '커버',
     repaintTask: '리페인트',
-    
+
     // Search Page
     searchSongsPlaceholder: '곡, 재생목록, 제작자 또는 스타일 검색',
     songsMatching: '일치하는 곡',
@@ -2206,7 +2212,7 @@ export const translations = {
     noPlaylistsYet: '공개 재생목록이 아직 없습니다. 만들고 즐겨찾기를 공유하세요!',
     genres: '장르',
     songs: '곡',
-    
+
     // Library View
     yourLibrary: '내 라이브러리',
     newPlaylist: '새 재생목록',
@@ -2214,7 +2220,7 @@ export const translations = {
     playlists: '재생목록',
     playlist: '재생목록',
     byYou: '내가 만든',
-    
+
     // User Profile
     back: '뒤로',
     loadingProfile: '로딩 중...',
@@ -2240,7 +2246,7 @@ export const translations = {
     uploadingBanner: '배너 업로드 중...',
     saving: '저장 중...',
     saveChanges: '변경 사항 저장',
-    
+
     // Playlist Modals
     createPlaylist: '재생목록 만들기',
     playlistName: '이름',
@@ -2250,7 +2256,7 @@ export const translations = {
     addToPlaylist: '재생목록에 추가',
     createNewPlaylist: '새 재생목록 만들기',
     noExistingPlaylists: '재생목록이 아직 없습니다.',
-    
+
     // Edit Profile Modal (Settings)
     usernameLabel: '사용자 이름',
     usernamePlaceholder: '사용자 이름',
@@ -2258,13 +2264,13 @@ export const translations = {
     usernameTakenError: '이 사용자 이름은 이미 사용 중입니다',
     usernameUpdateFailedError: '사용자 이름 업데이트에 실패했습니다',
     usernameRequirements: '문자, 숫자, 밑줄, 하이픈만 허용됨',
-    
+
     // Song Details (RightSidebar)
     more: '더보기',
     copy: '복사',
     copied: '복사됨!',
     copyAllTags: '모든 태그 복사',
-    
+
     // Song Dropdown Menu
     createVideo: '비디오 만들기',
     editAudio: '오디오 편집',
@@ -2280,13 +2286,13 @@ export const translations = {
     songsDeletedPartial: '{succeeded}/{total}곡 삭제됨',
     deleteUploadConfirm: '이 업로드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
     cannotBeUndone: '이 작업은 되돌릴 수 없습니다.',
-    
+
     // Player
     nowPlaying: '재생 중',
     downloadAudio: '오디오 다운로드',
     openInEditor: '편집기에서 열기',
     anonymous: '익명 사용자',
-    
+
     // PlaylistDetail
     loadingPlaylist: '재생목록 로딩 중...',
     playlistNotFound: '재생목록을 찾을 수 없습니다',
@@ -2294,13 +2300,13 @@ export const translations = {
     dateAdded: '추가일',
     justNow: '방금',
     unknown: '알 수 없음',
-    
+
     // SongProfile
     loadingSong: '곡 로딩 중...',
     songNotFound: '곡을 찾을 수 없습니다',
     similar: '유사',
     by: '제작자',
-    
+
     // ShareModal
     shareSong: '곡 공유',
     shareOnX: 'X에서 공유',
@@ -2313,7 +2319,7 @@ export const translations = {
     copyLink: '링크 복사',
     emailSubject: '이 AI 곡을 들어보세요',
     emailBody: '안녕하세요!\n\n제가 만든 이 AI 생성 곡을 들어보세요. 마음에 드실 거예요:\n\n"{title}" - {creator}\n{style}\n\n여기서 들으세요: {url}\n\nACE-Step UI로 제작 - 무료 오픈 소스 로컬 AI 음악 생성!',
-    
+
     // Reference Modal
     referenceModalTitle: '참조 음악',
     coverModalTitle: '커버 음악',
@@ -2326,7 +2332,7 @@ export const translations = {
     loadingTracks: '로딩 중...',
     noTracksYet: '트랙이 없습니다',
     uploadAudioFilesAsReferences: '참조로 사용할 오디오 파일 업로드',
-    
+
     // Training Module
     loraTraining: 'LoRA 훈련',
     trainingDescription: '오디오 파일에서 데이터셋을 구축하고 커스텀 어댑터를 훈련',
@@ -2364,6 +2370,8 @@ export const translations = {
     genreRatioHint: '0% = 모두 캡션, 100% = 모두 장르',
     autoLabelWithAI: 'AI로 자동 라벨링',
     autoLabelDescription: '오디오 파일의 메타데이터 생성: 캡션, BPM, 키, 박자',
+    autoLabelChunkSize: '청크 크기',
+    autoLabelBatchSize: '배치 크기',
     skipMetas: 'BPM/키/박자 건너뛰기',
     onlyUnlabeled: '라벨 없는 것만',
     autoLabelAll: '모두 자동 라벨링',
@@ -2391,7 +2399,7 @@ export const translations = {
     stopTraining: '훈련 중지',
     trainingProgress: '훈련 진행',
     trainingLog: '훈련 로그',
-    
+
     // Training Status Messages
     scanning: '스캔 중...',
     autoLabeling: '자동 라벨링 중...',

@@ -611,6 +611,8 @@ export const trainingApi = {
     format_lyrics?: boolean;
     transcribe_lyrics?: boolean;
     only_unlabeled?: boolean;
+    chunk_size?: number;
+    batch_size?: number;
   }, token: string): Promise<{
     message: string;
     labeled_count: number;
@@ -622,6 +624,8 @@ export const trainingApi = {
     format_lyrics?: boolean;
     transcribe_lyrics?: boolean;
     only_unlabeled?: boolean;
+    chunk_size?: number;
+    batch_size?: number;
   }, token: string): Promise<{
     task_id: string;
     message: string;

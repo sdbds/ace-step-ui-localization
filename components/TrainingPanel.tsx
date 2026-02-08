@@ -63,6 +63,8 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
   const [genreRatio, setGenreRatio] = useState(0);
   const [skipMetas, setSkipMetas] = useState(false);
   const [onlyUnlabeled, setOnlyUnlabeled] = useState(false);
+  const [autoLabelChunkSize, setAutoLabelChunkSize] = useState(16);
+  const [autoLabelBatchSize, setAutoLabelBatchSize] = useState(1);
   const [labelProgress, setLabelProgress] = useState('');
   const [labelStatus, setLabelStatus] = useState<{ current: number; total: number; status: string } | null>(null);
   const labelPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -296,6 +298,8 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
       const startResult = await trainingApi.autoLabelAsync({
         skip_metas: skipMetas,
         only_unlabeled: onlyUnlabeled,
+        chunk_size: Math.max(1, Number(autoLabelChunkSize) || 1),
+        batch_size: Math.max(1, Number(autoLabelBatchSize) || 1),
       }, token);
 
       if (!startResult || !startResult.task_id) {
@@ -824,6 +828,34 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                   />
                   <span className="text-sm text-zinc-700 dark:text-zinc-300">{t('onlyUnlabeled')}</span>
                 </label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    {t('autoLabelChunkSize')}
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={autoLabelChunkSize}
+                    onChange={(e) => setAutoLabelChunkSize(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    {t('autoLabelBatchSize')}
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={autoLabelBatchSize}
+                    onChange={(e) => setAutoLabelBatchSize(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
               </div>
 
               <button
