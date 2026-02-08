@@ -774,6 +774,7 @@ export const trainingApi = {
     training_seed?: number;
     lora_output_dir?: string;
     use_fp8?: boolean;
+    gradient_checkpointing?: boolean;
   }, token: string): Promise<{
     message: string;
     tensor_dir: string;
@@ -799,6 +800,7 @@ export const trainingApi = {
     training_shift?: number;
     training_seed?: number;
     output_dir?: string;
+    gradient_checkpointing?: boolean;
   }, token: string): Promise<{
     message: string;
     tensor_dir: string;

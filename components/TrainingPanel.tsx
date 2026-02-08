@@ -131,6 +131,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
   const [trainingSeed, setTrainingSeed] = useState(42);
   const [loraOutputDir, setLoraOutputDir] = useState('./lora_output');
   const [useFP8, setUseFP8] = useState(false);
+  const [gradientCheckpointing, setGradientCheckpointing] = useState(false);
   const [trainingProgress, setTrainingProgress] = useState('');
   const [trainingLog, setTrainingLog] = useState('');
   const [isTraining, setIsTraining] = useState(false);
@@ -170,6 +171,27 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
       }
       return nextMap.get(it.index) || it;
     });
+  };
+
+  const getAutoLabelStageNameKey = (progress: string) => {
+    const p = (progress || '').trim();
+    if (!p) return 'autoLabelPreparing' as const;
+
+    if (
+      p.startsWith('Phase 1/') ||
+      p.startsWith('VAE encoding') ||
+      p.startsWith('Tokenizing') ||
+      p.startsWith('Encoding ') ||
+      p.includes('Encoding audio')
+    ) {
+      return 'autoLabelPreparing' as const;
+    }
+
+    if (p.startsWith('Phase 2/') || p.startsWith('Labeling') || p.startsWith('✅ Labeled')) {
+      return 'autoLabelLabelingStage' as const;
+    }
+
+    return 'autoLabelLabelingStage' as const;
   };
 
   // Check training status on mount to restore state after refresh
@@ -379,7 +401,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
   useEffect(() => {
     if (adapterType !== 'lokr') return;
     if (learningRate === 3e-4) {
-      setLearningRate(0.03);
+      setLearningRate(0.003);
     }
     if (trainEpochs === 1000) {
       setTrainEpochs(500);
@@ -680,6 +702,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
           training_shift: trainingShift,
           training_seed: trainingSeed,
           output_dir: loraOutputDir,
+          gradient_checkpointing: gradientCheckpointing,
         }, token);
       } else {
         result = await trainingApi.startTraining({
@@ -696,6 +719,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
           training_seed: trainingSeed,
           lora_output_dir: loraOutputDir,
           use_fp8: useFP8,
+          gradient_checkpointing: gradientCheckpointing,
         }, token);
       }
       if (!result) {
@@ -1027,12 +1051,13 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                 const current = labelStatus.current || 0;
                 const total = labelStatus.total || 1;
                 const progressPercent = (current / total) * 100;
+                const stageName = t(getAutoLabelStageNameKey(labelProgress));
 
                 return (
                   <div className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-lg p-4 border-2 border-violet-200 dark:border-violet-800 space-y-3">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-zinc-700 dark:text-zinc-200 font-medium">
-                        🤖 Auto-labeling: {current}/{total} samples
+                        🤖 {stageName}: {current}/{total} samples
                       </span>
                       <span className="text-xs font-mono text-violet-600 dark:text-violet-400 font-semibold">
                         {progressPercent.toFixed(1)}%
@@ -1492,6 +1517,19 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                     </label>
                   </div>
                 )}
+
+                <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <input
+                    type="checkbox"
+                    id="gradientCheckpointing"
+                    checked={gradientCheckpointing}
+                    onChange={(e) => setGradientCheckpointing(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 rounded focus:ring-blue-500"
+                  />
+                  <label htmlFor="gradientCheckpointing" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                    {t('gradientCheckpointing')} <span className="text-xs text-zinc-500 dark:text-zinc-400">({t('gradientCheckpointingDescription')})</span>
+                  </label>
+                </div>
               </div>
 
               {/* Training Controls */}
