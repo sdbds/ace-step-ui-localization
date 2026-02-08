@@ -47,9 +47,19 @@ interface TrainingPanelProps {}
 export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
   const { t } = useI18n();
   const { token } = useAuth();
-  
+
+  const buildDefaultDatasetJsonPath = (dir: string, name: string) => {
+    const d = (dir || '').trim();
+    const n = (name || '').trim() || 'my_lora_dataset';
+    if (!d) {
+      return `./datasets/${n}.json`;
+    }
+    const needsSep = !(d.endsWith('/') || d.endsWith('\\'));
+    return `${d}${needsSep ? '/' : ''}${n}.json`;
+  };
+
   const [activeTab, setActiveTab] = useState<'dataset' | 'training'>('dataset');
-  
+
   // Dataset Builder State
   const [loadJsonPath, setLoadJsonPath] = useState('./datasets/my_lora_dataset.json');
   const [audioDirectory, setAudioDirectory] = useState('./datasets');
@@ -71,13 +81,14 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
   const [selectedSampleIndex, setSelectedSampleIndex] = useState(0);
   const [savePath, setSavePath] = useState('./datasets/my_lora_dataset.json');
   const [saveStatus, setSaveStatus] = useState('');
+  const [hasLoadedDatasetJson, setHasLoadedDatasetJson] = useState(false);
   const [preprocessOutputDir, setPreprocessOutputDir] = useState('./datasets/preprocessed_tensors');
   const [preprocessProgress, setPreprocessProgress] = useState('');
   const [preprocessStatus, setPreprocessStatus] = useState<{ current: number; total: number; status: string } | null>(null);
-  
+
   // Collapsible sections
   const [datasetSettingsOpen, setDatasetSettingsOpen] = useState(true);
-  
+
   // Sample editing
   const [editingSample, setEditingSample] = useState<DatasetSample | null>(null);
   const [editForm, setEditForm] = useState({
@@ -92,7 +103,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
     duration: '',
     is_instrumental: false,
   });
-  
+
   // Adapter Type
   const [adapterType, setAdapterType] = useState<'lora' | 'lokr'>('lora');
 
@@ -103,7 +114,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
   const [lokrDecomposeBoth, setLokrDecomposeBoth] = useState(false);
   const [lokrUseTucker, setLokrUseTucker] = useState(false);
   const [lokrUseScalar, setLokrUseScalar] = useState(false);
-  const [lokrWeightDecompose, setLokrWeightDecompose] = useState(false);
+  const [lokrWeightDecompose, setLokrWeightDecompose] = useState(true);
 
   // Training State
   const [trainingTensorDir, setTrainingTensorDir] = useState('./datasets/preprocessed_tensors');
@@ -147,11 +158,11 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
   // Check training status on mount to restore state after refresh
   useEffect(() => {
     if (!token) return;
-    
+
     const checkInitialTrainingStatus = async () => {
       try {
         const status = await trainingApi.getTrainingStatus(token);
-        
+
         if (status.is_training) {
           setIsTraining(true);
           if (status.tensorboard_url) {
@@ -175,7 +186,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
         console.error('Failed to check initial training status:', error);
       }
     };
-    
+
     checkInitialTrainingStatus();
   }, [token]);
 
@@ -189,6 +200,60 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
     };
   }, []);
 
+  // Check auto-label status on mount to restore state after refresh
+  useEffect(() => {
+    if (!token) return;
+
+    const checkInitialAutoLabelStatus = async () => {
+      try {
+        const status = await trainingApi.getAutoLabelStatusLatest(token);
+        if (status.status === 'running') {
+          setLabelProgress(`${status.progress} (${status.current}/${status.total})`);
+          setLabelStatus({ current: status.current, total: status.total, status: 'running' });
+
+          if (labelPollRef.current) {
+            clearInterval(labelPollRef.current);
+          }
+
+          const pollInterval = setInterval(async () => {
+            try {
+              const s = await trainingApi.getAutoLabelStatusLatest(token);
+              setLabelProgress(`${s.progress} (${s.current}/${s.total})`);
+              if (s.status === 'completed') {
+                clearInterval(pollInterval);
+                labelPollRef.current = null;
+                if (s.result) {
+                  setLabelProgress(s.result.message || 'Labeling completed');
+                  setAudioFiles(transformSamples(s.result.samples || []));
+                  setDatasetSettingsOpen(false);
+                }
+                setLabelStatus(null);
+              } else if (s.status === 'failed') {
+                clearInterval(pollInterval);
+                labelPollRef.current = null;
+                setLabelProgress(`${t('error')}: ${s.error || 'Unknown error'}`);
+                setLabelStatus(null);
+              } else if (s.status === 'running') {
+                setLabelStatus({ current: s.current, total: s.total, status: 'running' });
+              }
+            } catch (e: any) {
+              clearInterval(pollInterval);
+              labelPollRef.current = null;
+              setLabelProgress(`${t('error')}: ${e?.message || 'Failed to check labeling status'}`);
+              setLabelStatus(null);
+            }
+          }, 2000);
+
+          labelPollRef.current = pollInterval;
+        }
+      } catch (error) {
+        // ignore
+      }
+    };
+
+    checkInitialAutoLabelStatus();
+  }, [token]);
+
   // Poll training status when training is active
   useEffect(() => {
     if (!isTraining || !token) return;
@@ -196,17 +261,17 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
     const pollInterval = setInterval(async () => {
       try {
         const status = await trainingApi.getTrainingStatus(token);
-        
+
         if (!status.is_training) {
           setIsTraining(false);
           clearInterval(pollInterval);
         }
-        
+
         // Update TensorBoard URL if available
         if (status.tensorboard_url) {
           setTensorboardUrl(status.tensorboard_url);
         }
-        
+
         // Update training start time and epoch
         if (status.start_time) {
           setTrainingStartTime(status.start_time);
@@ -214,12 +279,12 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
         if (status.current_epoch !== undefined) {
           setCurrentEpoch(status.current_epoch);
         }
-        
+
         // Auto-expand TensorBoard when training starts (step > 0)
         if (status.current_step && status.current_step > 0 && !showTensorboard && status.tensorboard_url) {
           setShowTensorboard(true);
         }
-        
+
         // Update training log from backend
         const prevLog = trainingLog;
         if (status.training_log && status.training_log !== prevLog) {
@@ -229,13 +294,13 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
             setIframeKey(prev => prev + 1);
           }
         }
-        
+
         // Update progress display
         if (status.current_step !== undefined) {
           setTrainingStatus(status);
           setTrainingProgress('training'); // Simple flag
         }
-        
+
         if (status.error) {
           setTrainingProgress(`${t('error')}: ${status.error}`);
           setTrainingStatus(null);
@@ -250,6 +315,20 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
     return () => clearInterval(pollInterval);
   }, [isTraining, token]);
 
+  // Apply LoKR-specific defaults when switching to LoKR
+  useEffect(() => {
+    if (adapterType !== 'lokr') return;
+    if (learningRate === 3e-4) {
+      setLearningRate(0.03);
+    }
+    if (trainEpochs === 1000) {
+      setTrainEpochs(500);
+    }
+    if (!lokrWeightDecompose) {
+      setLokrWeightDecompose(true);
+    }
+  }, [adapterType]);
+
   const handleLoadJson = async () => {
     if (!token) return;
     setLoadJsonStatus(t('loadingTracks'));
@@ -262,6 +341,8 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
       setLoadJsonStatus(result.message || 'Dataset loaded');
       setDatasetName(result.dataset_name || '');
       setAudioFiles(transformSamples(result.samples || []));
+      setSavePath(loadJsonPath);
+      setHasLoadedDatasetJson(true);
     } catch (error: any) {
       setLoadJsonStatus(`${t('error')}: ${error?.message || 'Failed to load dataset'}`);
     }
@@ -284,6 +365,10 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
       }
       setScanStatus(result.message || 'Scan completed');
       setAudioFiles(transformSamples(result.samples || []));
+
+      const defaultPath = buildDefaultDatasetJsonPath(audioDirectory, datasetName);
+      setSavePath(defaultPath);
+      setHasLoadedDatasetJson(false);
     } catch (error: any) {
       setScanStatus(`${t('error')}: ${error?.message || 'Failed to scan directory'}`);
     }
@@ -298,6 +383,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
       const startResult = await trainingApi.autoLabelAsync({
         skip_metas: skipMetas,
         only_unlabeled: onlyUnlabeled,
+        save_path: savePath,
         chunk_size: Math.max(1, Number(autoLabelChunkSize) || 1),
         batch_size: Math.max(1, Number(autoLabelBatchSize) || 1),
       }, token);
@@ -306,7 +392,6 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
         setLabelProgress('Failed to start auto-labeling: No response from server');
         return;
       }
-      const taskId = startResult.task_id;
       setLabelProgress(`${startResult.message || 'Starting'} (0/${startResult.total || 0})`);
       setLabelStatus({ current: 0, total: startResult.total || 0, status: 'running' });
 
@@ -318,7 +403,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
       // Poll for status
       const pollInterval = setInterval(async () => {
         try {
-          const statusResult = await trainingApi.getAutoLabelStatus(taskId, token);
+          const statusResult = await trainingApi.getAutoLabelStatusLatest(token);
 
           // Update progress display
           const progressText = `${statusResult.progress} (${statusResult.current}/${statusResult.total})`;
@@ -366,7 +451,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
       if (timesig && !isNaN(Number(timesig))) {
         timesig = `${timesig}/4`;
       }
-      
+
       setEditForm({
         caption: sample.caption || '',
         lyrics: sample.lyrics || '',
@@ -399,7 +484,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
         duration: editForm.duration ? Number(editForm.duration) : undefined,
         is_instrumental: editForm.is_instrumental,
       }, token);
-      
+
       const updatedSamples = await trainingApi.getSamples(token);
       setAudioFiles(transformSamples(updatedSamples.samples));
       setEditingSample(null);
@@ -433,13 +518,13 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
   const handlePreprocess = async () => {
     if (!token) return;
     setPreprocessProgress(t('preprocessing'));
-    
+
     try {
       // Start async preprocessing task
       const startResult = await trainingApi.preprocessDatasetAsync({
         output_dir: preprocessOutputDir,
       }, token);
-      
+
       if (!startResult || !startResult.task_id) {
         setPreprocessProgress('Failed to start preprocessing: No response from server');
         return;
@@ -447,17 +532,17 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
       const taskId = startResult.task_id;
       setPreprocessProgress(`${startResult.message || 'Starting'} (0/${startResult.total || 0})`);
       setPreprocessStatus({ current: 0, total: startResult.total || 0, status: 'running' });
-      
+
       // Poll for status
       const pollInterval = setInterval(async () => {
         try {
           const statusResult = await trainingApi.getPreprocessStatus(taskId, token);
-          
+
           // Update progress display
           const progressText = `${statusResult.progress} (${statusResult.current}/${statusResult.total})`;
           setPreprocessProgress(progressText);
           setPreprocessStatus({ current: statusResult.current, total: statusResult.total, status: statusResult.status });
-          
+
           // Check if completed
           if (statusResult.status === 'completed') {
             clearInterval(pollInterval);
@@ -476,10 +561,10 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
           setPreprocessStatus(null);
         }
       }, 2000); // Poll every 2 seconds
-      
+
       // Cleanup on unmount
       return () => clearInterval(pollInterval);
-      
+
     } catch (error: any) {
       setPreprocessProgress(`${t('error')}: ${error?.message || 'Failed to start preprocessing'}`);
     }
@@ -722,10 +807,10 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                 <h3 className="text-base font-semibold text-zinc-900 dark:text-white">⚙️ {t('datasetSettings')}</h3>
                 {datasetSettingsOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
               </button>
-              
+
               {datasetSettingsOpen && (
                 <div className="p-4 pt-0 space-y-4">
-              
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
@@ -807,7 +892,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
                 {t('autoLabelDescription')}
               </p>
-              
+
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -875,7 +960,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                 const current = labelStatus.current || 0;
                 const total = labelStatus.total || 1;
                 const progressPercent = (current / total) * 100;
-                
+
                 return (
                   <div className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-lg p-4 border-2 border-violet-200 dark:border-violet-800 space-y-3">
                     <div className="flex items-center justify-between text-sm">
@@ -886,9 +971,9 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                         {progressPercent.toFixed(1)}%
                       </span>
                     </div>
-                    
+
                     <div className="relative w-full h-4 bg-white/30 dark:bg-zinc-800/50 rounded-full overflow-hidden shadow-inner border border-violet-300 dark:border-violet-700">
-                      <div 
+                      <div
                         className="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300 ease-out"
                         style={{ width: `${Math.min(progressPercent, 100)}%` }}
                       />
@@ -899,7 +984,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                   </div>
                 );
               })()}
-              
+
               {labelProgress && (!labelStatus || labelStatus.status !== 'running') && (
                 <div className="bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-lg p-3 text-sm text-zinc-700 dark:text-zinc-300 border-2 border-violet-200 dark:border-violet-800">
                   {labelProgress}
@@ -958,12 +1043,12 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                     {t('preprocess')}
                   </button>
                 </div>
-                
+
                 {preprocessProgress && preprocessStatus && preprocessStatus.status === 'running' && (() => {
                   const current = preprocessStatus.current || 0;
                   const total = preprocessStatus.total || 1;
                   const progressPercent = (current / total) * 100;
-                  
+
                   return (
                     <div className="bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/30 rounded-lg p-4 border-2 border-amber-200 dark:border-amber-800 space-y-3">
                       <div className="flex items-center justify-between text-sm">
@@ -974,9 +1059,9 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                           {progressPercent.toFixed(1)}%
                         </span>
                       </div>
-                      
+
                       <div className="relative w-full h-4 bg-white/30 dark:bg-zinc-800/50 rounded-full overflow-hidden shadow-inner border border-amber-300 dark:border-amber-700">
-                        <div 
+                        <div
                           className="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-500 to-amber-500 transition-all duration-300 ease-out"
                           style={{ width: `${Math.min(progressPercent, 100)}%` }}
                         />
@@ -987,7 +1072,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                     </div>
                   );
                 })()}
-                
+
                 {preprocessProgress && (!preprocessStatus || preprocessStatus.status !== 'running') && (
                   <div className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/30 rounded-lg px-3 py-2 text-xs text-zinc-700 dark:text-zinc-300 border-2 border-amber-200 dark:border-amber-800">
                     {preprocessProgress}
@@ -1209,7 +1294,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
               {/* Training Parameters */}
               <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 rounded-xl p-4 space-y-4 border-2 border-orange-200 dark:border-orange-800 shadow-md">
                 <h3 className="text-base font-semibold text-zinc-900 dark:text-white">🎛️ {t('trainingParameters')}</h3>
-                
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
@@ -1377,14 +1462,14 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                 const totalEpochs = status.config?.epochs || 1;
                 const currentStep = status.current_step || 0;
                 const currentLoss = status.current_loss?.toFixed(4) || 'N/A';
-                
+
                 // Calculate steps per epoch and total steps
                 const stepsPerEpoch = currentEpoch > 0 ? Math.ceil(currentStep / currentEpoch) : currentStep;
                 const totalSteps = totalEpochs * stepsPerEpoch;
-                
+
                 // Calculate progress percentage
                 const epochProgress = (currentEpoch / totalEpochs) * 100;
-                
+
                 // Format elapsed time
                 const elapsed = trainingStartTime ? Math.floor(Date.now() / 1000 - trainingStartTime) : 0;
                 const formatTime = (seconds: number) => {
@@ -1393,15 +1478,15 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                   const s = seconds % 60;
                   return h > 0 ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` : `${m}:${s.toString().padStart(2, '0')}`;
                 };
-                
+
                 // Format ETA
                 const eta = status.estimated_time_remaining || 0;
                 const etaStr = eta > 0 ? formatTime(Math.floor(eta)) : '--:--';
-                
+
                 // Format speed
                 const speed = status.steps_per_second || 0;
                 const speedStr = speed > 1 ? `${speed.toFixed(2)} it/s` : speed > 0 ? `${(1/speed).toFixed(2)} s/it` : '-- it/s';
-                
+
                 return (
                   <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 rounded-xl p-5 border-2 border-emerald-200 dark:border-emerald-800 shadow-lg space-y-4">
                     <div className="flex items-center justify-between">
@@ -1431,7 +1516,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Progress Info */}
                     <div className="space-y-3">
                       <div className="bg-white/50 dark:bg-zinc-800/50 rounded-lg p-3 flex items-center justify-between text-sm">
@@ -1440,10 +1525,10 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                         </span>
                         <span className="text-xs font-mono text-zinc-500 dark:text-emerald-400 font-semibold">{speedStr}</span>
                       </div>
-                      
+
                       {/* Progress Bar */}
                       <div className="relative w-full h-6 bg-white/30 dark:bg-zinc-800/50 rounded-full overflow-hidden shadow-inner border-2 border-emerald-300 dark:border-emerald-700">
-                        <div 
+                        <div
                           className="absolute top-0 left-0 h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-300 ease-out"
                           style={{ width: `${Math.min(epochProgress, 100)}%` }}
                         />
@@ -1453,7 +1538,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                           </span>
                         </div>
                       </div>
-                      
+
                       {/* Time Info */}
                       <div className="bg-white/50 dark:bg-zinc-800/50 rounded-lg p-2 flex items-center justify-between text-xs">
                         <span className="text-zinc-600 dark:text-zinc-300">⏱️ Elapsed: <span className="font-mono font-semibold">{formatTime(elapsed)}</span></span>
@@ -1463,7 +1548,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                   </div>
                 );
               })()}
-              
+
               {/* Error Display */}
               {trainingProgress && !trainingStatus && (
                 <div className="bg-gradient-to-br from-red-50 to-pink-50 dark:bg-red-900/30 rounded-xl p-4 border-2 border-red-300 dark:border-red-800 shadow-md">

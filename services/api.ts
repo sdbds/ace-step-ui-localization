@@ -161,7 +161,7 @@ export const songsApi = {
     const s = result.song;
     const rawUrl = s.audio_url || s.audioUrl;
     const resolvedUrl = getAudioUrl(rawUrl, s.id);
-    
+
     return {
       song: {
         id: s.id,
@@ -611,6 +611,7 @@ export const trainingApi = {
     format_lyrics?: boolean;
     transcribe_lyrics?: boolean;
     only_unlabeled?: boolean;
+    save_path?: string;
     chunk_size?: number;
     batch_size?: number;
   }, token: string): Promise<{
@@ -624,6 +625,7 @@ export const trainingApi = {
     format_lyrics?: boolean;
     transcribe_lyrics?: boolean;
     only_unlabeled?: boolean;
+    save_path?: string;
     chunk_size?: number;
     batch_size?: number;
   }, token: string): Promise<{
@@ -645,6 +647,20 @@ export const trainingApi = {
     };
     error?: string;
   }> => api(`/api/training/dataset/auto-label-status/${taskId}`, { method: 'GET', token }),
+
+  getAutoLabelStatusLatest: (token: string): Promise<{
+    task_id: string | null;
+    status: 'idle' | 'running' | 'completed' | 'failed';
+    progress: string;
+    current: number;
+    total: number;
+    result?: {
+      message: string;
+      labeled_count: number;
+      samples: any[];
+    };
+    error?: string;
+  }> => api('/api/training/dataset/auto-label-status', { method: 'GET', token }),
 
   saveDataset: (params: {
     save_path: string;
