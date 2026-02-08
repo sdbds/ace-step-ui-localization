@@ -140,6 +140,15 @@ router.post('/dataset/preprocess-async', authMiddleware, async (req: Authenticat
   }
 });
 
+router.get('/dataset/preprocess-status', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await proxyToAceStep('/v1/dataset/preprocess_status', 'GET');
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get('/dataset/preprocess-status/:taskId', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await proxyToAceStep(`/v1/dataset/preprocess_status/${req.params.taskId}`, 'GET');

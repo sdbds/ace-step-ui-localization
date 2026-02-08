@@ -640,6 +640,9 @@ export const trainingApi = {
     progress: string;
     current: number;
     total: number;
+    save_path?: string | null;
+    last_updated_index?: number | null;
+    last_updated_sample?: any | null;
     result?: {
       message: string;
       labeled_count: number;
@@ -654,6 +657,9 @@ export const trainingApi = {
     progress: string;
     current: number;
     total: number;
+    save_path?: string | null;
+    last_updated_index?: number | null;
+    last_updated_sample?: any | null;
     result?: {
       message: string;
       labeled_count: number;
@@ -703,6 +709,20 @@ export const trainingApi = {
     };
     error?: string;
   }> => api(`/api/training/dataset/preprocess-status/${taskId}`, { method: 'GET', token }),
+
+  getPreprocessStatusLatest: (token: string): Promise<{
+    task_id: string | null;
+    status: 'idle' | 'running' | 'completed' | 'failed';
+    progress: string;
+    current: number;
+    total: number;
+    result?: {
+      message: string;
+      output_dir: string;
+      num_tensors: number;
+    };
+    error?: string;
+  }> => api('/api/training/dataset/preprocess-status', { method: 'GET', token }),
 
   getSamples: (token: string): Promise<{
     dataset_name: string;

@@ -155,6 +155,23 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
     }));
   };
 
+  const transformOneSample = (sample: any): DisplaySample => transformSamples([sample])[0];
+
+  const mergeSamplesPreserveEditing = (prev: DisplaySample[], nextAll: any[]) => {
+    const nextMap = new Map<number, DisplaySample>();
+    for (const s of transformSamples(nextAll || [])) {
+      nextMap.set(s.index, s);
+    }
+
+    const editingIndex = editingSample?.index;
+    return prev.map((it) => {
+      if (editingIndex !== undefined && it.index === editingIndex) {
+        return it;
+      }
+      return nextMap.get(it.index) || it;
+    });
+  };
+
   // Check training status on mount to restore state after refresh
   useEffect(() => {
     if (!token) return;
@@ -188,6 +205,49 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
     };
 
     checkInitialTrainingStatus();
+  }, [token]);
+
+  // Check preprocess status on mount to restore state after refresh
+  useEffect(() => {
+    if (!token) return;
+
+    const checkInitialPreprocessStatus = async () => {
+      try {
+        const status = await trainingApi.getPreprocessStatusLatest(token);
+        if (status.status === 'running') {
+          setPreprocessProgress(`${status.progress} (${status.current}/${status.total})`);
+          setPreprocessStatus({ current: status.current, total: status.total, status: 'running' });
+
+          const pollInterval = setInterval(async () => {
+            try {
+              const s = await trainingApi.getPreprocessStatusLatest(token);
+              setPreprocessProgress(`${s.progress} (${s.current}/${s.total})`);
+
+              if (s.status === 'completed') {
+                clearInterval(pollInterval);
+                if (s.result) {
+                  setPreprocessProgress(s.result.message || 'Preprocessing completed');
+                }
+                setPreprocessStatus(null);
+              } else if (s.status === 'failed') {
+                clearInterval(pollInterval);
+                setPreprocessProgress(`${t('error')}: ${s.error || 'Unknown error'}`);
+                setPreprocessStatus(null);
+              } else {
+                setPreprocessStatus({ current: s.current, total: s.total, status: s.status });
+              }
+            } catch {
+              clearInterval(pollInterval);
+              setPreprocessStatus(null);
+            }
+          }, 2000);
+        }
+      } catch (error) {
+        console.error('Failed to check initial preprocess status:', error);
+      }
+    };
+
+    checkInitialPreprocessStatus();
   }, [token]);
 
   // Clean up label polling on unmount
@@ -410,13 +470,21 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
           setLabelProgress(progressText);
           setLabelStatus({ current: statusResult.current, total: statusResult.total, status: statusResult.status });
 
+          if (statusResult.last_updated_sample && statusResult.last_updated_index !== null && statusResult.last_updated_index !== undefined) {
+            const idx = Number(statusResult.last_updated_index);
+            if (!editingSample || editingSample.index !== idx) {
+              const updated = transformOneSample({ ...statusResult.last_updated_sample, index: idx });
+              setAudioFiles((prev) => prev.map((it) => (it.index === idx ? updated : it)));
+            }
+          }
+
           // Check if completed
           if (statusResult.status === 'completed') {
             clearInterval(pollInterval);
             labelPollRef.current = null;
             if (statusResult.result) {
               setLabelProgress(statusResult.result.message || 'Labeling completed');
-              setAudioFiles(transformSamples(statusResult.result.samples || []));
+              setAudioFiles((prev) => mergeSamplesPreserveEditing(prev, statusResult.result?.samples || []));
               setDatasetSettingsOpen(false);
             }
             setLabelStatus(null);
@@ -529,14 +597,13 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
         setPreprocessProgress('Failed to start preprocessing: No response from server');
         return;
       }
-      const taskId = startResult.task_id;
       setPreprocessProgress(`${startResult.message || 'Starting'} (0/${startResult.total || 0})`);
       setPreprocessStatus({ current: 0, total: startResult.total || 0, status: 'running' });
 
       // Poll for status
       const pollInterval = setInterval(async () => {
         try {
-          const statusResult = await trainingApi.getPreprocessStatus(taskId, token);
+          const statusResult = await trainingApi.getPreprocessStatusLatest(token);
 
           // Update progress display
           const progressText = `${statusResult.progress} (${statusResult.current}/${statusResult.total})`;
