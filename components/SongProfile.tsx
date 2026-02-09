@@ -110,6 +110,50 @@ export const SongProfile: React.FC<SongProfileProps> = ({ songId, onBack, onPlay
         try {
             const response = await songsApi.getFullSong(songId, token);
 
+            const generationParams = (() => {
+                try {
+                    const s: any = response.song as any;
+                    const parsed = (() => {
+                        const gp = s.generation_params;
+                        if (!gp) return undefined;
+                        return typeof gp === 'string' ? JSON.parse(gp) : gp;
+                    })();
+
+                    const gp: any = (parsed && typeof parsed === 'object') ? { ...parsed } : {};
+
+                    const bpm = gp.bpm ?? s.bpm;
+                    const duration = gp.duration ?? s.duration;
+                    const keyScale = gp.keyScale ?? gp.key_scale ?? gp.keyscale ?? s.key_scale;
+                    const normalizeTimeSignature = (v: unknown) => {
+                        if (v == null) return undefined;
+                        if (typeof v === 'string') {
+                            const str = v.trim();
+                            if (!str) return undefined;
+                            if (str.includes('/')) return str;
+                            const n = Number(str);
+                            return Number.isFinite(n) ? `${n}/4` : str;
+                        }
+                        if (typeof v === 'number' && Number.isFinite(v)) return `${v}/4`;
+                        const str = String(v);
+                        return str.includes('/') ? str : str;
+                    };
+                    const timeSignature = normalizeTimeSignature(gp.timeSignature ?? gp.time_signature ?? gp.timesignature ?? s.time_signature);
+                    const ditModel = gp.ditModel ?? gp.dit_model ?? s.dit_model ?? s.ditModel;
+                    const lmModel = gp.lmModel ?? gp.lm_model ?? s.lm_model;
+
+                    if (bpm != null) gp.bpm = bpm;
+                    if (duration != null) gp.duration = duration;
+                    if (keyScale != null) gp.keyScale = keyScale;
+                    if (timeSignature != null) gp.timeSignature = timeSignature;
+                    if (ditModel != null) gp.ditModel = ditModel;
+                    if (lmModel != null) gp.lmModel = lmModel;
+
+                    return Object.keys(gp).length > 0 ? gp : undefined;
+                } catch {
+                    return undefined;
+                }
+            })();
+
             const transformedSong: Song = {
                 id: response.song.id,
                 title: response.song.title,
@@ -128,6 +172,7 @@ export const SongProfile: React.FC<SongProfileProps> = ({ songId, onBack, onPlay
                 userId: response.song.user_id,
                 creator: response.song.creator,
                 creator_avatar: response.song.creator_avatar,
+                generationParams,
             };
 
             setSong(transformedSong);

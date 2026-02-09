@@ -428,7 +428,7 @@ router.get('/status/:jobId', authMiddleware, async (req: AuthenticatedRequest, r
         }
 
         const queryResult = await queryResponse.json();
-        
+
         // Response format: { code: 200, data: [{ task_id, result, status }] }
         const dataList = queryResult.data || queryResult.data_list || queryResult;
         const taskData = Array.isArray(dataList) ? dataList[0] : null;
@@ -438,7 +438,7 @@ router.get('/status/:jobId', authMiddleware, async (req: AuthenticatedRequest, r
           console.error('Looking for task_id:', job.acestep_task_id);
           throw new Error(`No task data in response`);
         }
-        
+
         console.log('Task data:', JSON.stringify(taskData, null, 2));
 
         // Map ACE-Step status codes to our status
@@ -447,23 +447,23 @@ router.get('/status/:jobId', authMiddleware, async (req: AuthenticatedRequest, r
           1: 'succeeded',
           2: 'failed',
         };
-        
+
         // Parse result data
         let resultData = null;
         if (taskData.status === 1 && taskData.result) {
           const parsedResults = JSON.parse(taskData.result);
           const audioUrls: string[] = [];
           let firstResult = null;
-          
+
           // Process all results from batch
           for (let i = 0; i < parsedResults.length; i++) {
             const parsedResult = parsedResults[i];
             if (i === 0) firstResult = parsedResult;
-            
+
             // Convert path to full URL
             let audioUrl = parsedResult.file;
             console.log(`[Batch ${i + 1}/${parsedResults.length}] Original file path:`, audioUrl);
-            
+
             if (audioUrl) {
               if (audioUrl.startsWith('/v1/audio')) {
                 audioUrl = `${config.acestep.apiUrl}${audioUrl}`;
@@ -475,7 +475,7 @@ router.get('/status/:jobId', authMiddleware, async (req: AuthenticatedRequest, r
               audioUrls.push(audioUrl);
             }
           }
-          
+
           resultData = {
             audioUrls,
             duration: firstResult?.metas?.duration,
@@ -483,16 +483,21 @@ router.get('/status/:jobId', authMiddleware, async (req: AuthenticatedRequest, r
             keyScale: firstResult?.metas?.keyscale,
             timeSignature: firstResult?.metas?.timesignature,
             ditModel: firstResult?.dit_model,
+            seedValue: firstResult?.seed_value,
+            generationInfo: firstResult?.generation_info,
+            lmModel: firstResult?.lm_model,
             status: 'succeeded',
           };
         }
-        
+
         const aceStatus = {
           status: statusMap[taskData.status] || 'running',
           result: resultData,
           error: taskData.status === 2 ? 'Generation failed' : undefined,
           queuePosition: undefined,
           etaSeconds: undefined,
+          progress: undefined,
+          stage: undefined,
         };
 
         if (aceStatus.status !== job.status) {
@@ -515,6 +520,65 @@ router.get('/status/:jobId', authMiddleware, async (req: AuthenticatedRequest, r
           // If succeeded, create song records
           if (aceStatus.status === 'succeeded' && aceStatus.result) {
             const params = typeof job.params === 'string' ? JSON.parse(job.params) : job.params;
+
+            const durationVal = (aceStatus.result as any).duration != null && (aceStatus.result as any).duration > 0
+              ? (aceStatus.result as any).duration
+              : (params.duration && params.duration > 0 ? params.duration : 120);
+            const bpmVal = (aceStatus.result as any).bpm ?? params.bpm;
+            const keyScaleVal = (aceStatus.result as any).keyScale ?? params.keyScale;
+            const normalizeTimeSignature = (v: unknown) => {
+              if (v == null) return undefined;
+              if (typeof v === 'string') {
+                const s = v.trim();
+                if (!s) return undefined;
+                if (s.includes('/')) return s;
+                const n = Number(s);
+                return Number.isFinite(n) ? `${n}/4` : s;
+              }
+              if (typeof v === 'number' && Number.isFinite(v)) {
+                return `${v}/4`;
+              }
+              const s = String(v);
+              return s.includes('/') ? s : s;
+            };
+            const timeSignatureVal = normalizeTimeSignature((aceStatus.result as any).timeSignature ?? params.timeSignature);
+            const ditModelVal = (aceStatus.result as any).ditModel ?? params.ditModel ?? 'acestep-v15-sft';
+            const lmModelVal = (aceStatus.result as any).lmModel ?? params.lmModel;
+
+            const seedText = (aceStatus.result as any).seedValue != null
+              ? String((aceStatus.result as any).seedValue)
+              : undefined;
+            const seed = (() => {
+              if (!seedText) return undefined;
+              const first = seedText.split(',')[0]?.trim();
+              if (!first) return undefined;
+              const n = Number(first);
+              return Number.isFinite(n) ? n : undefined;
+            })();
+
+            const generationInfo = (aceStatus.result as any).generationInfo;
+            const inferenceSteps = (() => {
+              if (typeof generationInfo !== 'string') return undefined;
+              const m = generationInfo.match(/Steps:\s*(\d+)/i);
+              if (!m?.[1]) return undefined;
+              const n = Number(m[1]);
+              return Number.isFinite(n) ? n : undefined;
+            })();
+
+            const generationParamsToStore = {
+              ...params,
+              duration: durationVal,
+              bpm: bpmVal,
+              keyScale: keyScaleVal,
+              timeSignature: timeSignatureVal,
+              ditModel: ditModelVal,
+              ...(lmModelVal != null ? { lmModel: lmModelVal } : {}),
+              ...(seedText != null ? { seedText } : {}),
+              ...(seed != null ? { seed } : {}),
+              ...(inferenceSteps != null ? { inferenceSteps } : {}),
+              ...(generationInfo != null ? { generationInfo } : {}),
+            };
+
             const audioUrls = aceStatus.result.audioUrls.filter((url: string) =>
               url.endsWith('.mp3') || url.endsWith('.flac')
             );
@@ -548,13 +612,13 @@ router.get('/status/:jobId', authMiddleware, async (req: AuthenticatedRequest, r
                     params.style,
                     params.style,
                     storedPath,
-                    aceStatus.result.duration && aceStatus.result.duration > 0 ? aceStatus.result.duration : (params.duration && params.duration > 0 ? params.duration : 120),
-                    aceStatus.result.bpm || params.bpm,
-                    aceStatus.result.keyScale || params.keyScale,
-                    aceStatus.result.timeSignature || params.timeSignature,
+                    durationVal,
+                    bpmVal,
+                    keyScaleVal,
+                    timeSignatureVal,
                     JSON.stringify([]),
-                    aceStatus.result.ditModel || params.ditModel || 'acestep-v15-sft',
-                    JSON.stringify(params),
+                    ditModelVal,
+                    JSON.stringify(generationParamsToStore),
                   ]
                 );
 
@@ -575,13 +639,13 @@ router.get('/status/:jobId', authMiddleware, async (req: AuthenticatedRequest, r
                     params.style,
                     params.style,
                     audioUrl,
-                    aceStatus.result.duration && aceStatus.result.duration > 0 ? aceStatus.result.duration : (params.duration && params.duration > 0 ? params.duration : 120),
-                    aceStatus.result.bpm || params.bpm,
-                    aceStatus.result.keyScale || params.keyScale,
-                    aceStatus.result.timeSignature || params.timeSignature,
+                    durationVal,
+                    bpmVal,
+                    keyScaleVal,
+                    timeSignatureVal,
                     JSON.stringify([]),
-                    aceStatus.result.ditModel || params.ditModel || 'acestep-v15-sft',
-                    JSON.stringify(params),
+                    ditModelVal,
+                    JSON.stringify(generationParamsToStore),
                   ]
                 );
                 localPaths.push(audioUrl);

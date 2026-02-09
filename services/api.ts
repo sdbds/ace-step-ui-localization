@@ -106,6 +106,7 @@ export interface Song {
   user_id?: string;
   created_at: string;
   creator?: string;
+  creator_avatar?: string;
   ditModel?: string;
   generation_params?: any;
 }
@@ -162,6 +163,15 @@ export const songsApi = {
     const rawUrl = s.audio_url || s.audioUrl;
     const resolvedUrl = getAudioUrl(rawUrl, s.id);
 
+    const generationParams = (() => {
+      try {
+        if (!s.generation_params) return undefined;
+        return typeof s.generation_params === 'string' ? JSON.parse(s.generation_params) : s.generation_params;
+      } catch {
+        return undefined;
+      }
+    })();
+
     return {
       song: {
         id: s.id,
@@ -193,6 +203,8 @@ export const songsApi = {
         bpm: s.bpm,
         key_scale: s.key_scale,
         time_signature: s.time_signature,
+        generation_params: s.generation_params,
+        generationParams,
       }
     };
   },
@@ -310,6 +322,9 @@ export interface GenerationParams {
 }
 
 export interface GenerationJob {
+  id?: string;
+  params?: unknown;
+  created_at?: string;
   jobId: string;
   status: 'pending' | 'queued' | 'running' | 'succeeded' | 'failed';
   queuePosition?: number;
@@ -393,6 +408,13 @@ export const generateApi = {
     message: string;
     scale: number;
   }> => api('/api/lora/scale', { method: 'POST', body: params, token }),
+
+  getLoraStatus: (token: string): Promise<{
+    lora_loaded: boolean;
+    use_lora: boolean;
+    lora_scale: number;
+    adapter_type: string | null;
+  }> => api('/api/lora/status', { token }),
 };
 
 // Users API

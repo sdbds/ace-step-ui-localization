@@ -226,7 +226,9 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   const [showModelMenu, setShowModelMenu] = useState(false);
   const modelMenuRef = useRef<HTMLDivElement>(null);
   const previousModelRef = useRef<string>(selectedModel);
-  
+  const isMountedRef = useRef(true);
+  const modelsRetryTimeoutRef = useRef<number | null>(null);
+
   // Available models fetched from backend
   const [fetchedModels, setFetchedModels] = useState<{ name: string; is_active: boolean; is_preloaded: boolean }[]>([]);
 
@@ -271,7 +273,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   const filteredSubGenres = useMemo(() => {
     if (!selectedMainGenre) return [];
     const mainLower = selectedMainGenre.toLowerCase().trim();
-    return SUB_STYLES.filter(style => 
+    return SUB_STYLES.filter(style =>
       style.toLowerCase().includes(mainLower)
     );
   }, [selectedMainGenre]);
@@ -408,7 +410,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
 
   const handleLoraUnload = async () => {
     if (!token) return;
-    
+
     setIsLoraLoading(true);
     setLoraError(null);
 
@@ -427,7 +429,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
 
   const handleLoraScaleChange = async (newScale: number) => {
     setLoraScale(newScale);
-    
+
     if (!token || !loraLoaded) return;
 
     try {
@@ -445,6 +447,40 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
       setStyle(initialData.song.style);
       setTitle(initialData.song.title);
       setInstrumental(initialData.song.lyrics.length === 0);
+
+      // Restore full generation parameters if available
+      const gp = initialData.song.generationParams;
+      if (gp) {
+        if (gp.bpm != null) setBpm(gp.bpm);
+        if (gp.keyScale != null) setKeyScale(gp.keyScale);
+        if (gp.timeSignature != null) setTimeSignature(gp.timeSignature);
+        if (gp.duration != null) setDuration(gp.duration);
+        if (gp.inferenceSteps != null) setInferenceSteps(gp.inferenceSteps);
+        if (gp.guidanceScale != null) setGuidanceScale(gp.guidanceScale);
+        if (gp.seed != null && gp.seed >= 0) {
+          setSeed(gp.seed);
+          setRandomSeed(false);
+        }
+        if (gp.inferMethod) setInferMethod(gp.inferMethod);
+        if (gp.shift != null) setShift(gp.shift);
+        if (gp.audioFormat) setAudioFormat(gp.audioFormat);
+        if (gp.thinking != null) setThinking(gp.thinking);
+        if (gp.ditModel) setSelectedModel(gp.ditModel);
+        if (gp.vocalLanguage) setVocalLanguage(gp.vocalLanguage);
+        if (gp.referenceAudioUrl) {
+          setReferenceAudioUrl(gp.referenceAudioUrl);
+          if (gp.referenceAudioTitle) setReferenceAudioTitle(gp.referenceAudioTitle);
+        }
+        if (gp.sourceAudioUrl) {
+          setSourceAudioUrl(gp.sourceAudioUrl);
+          if (gp.sourceAudioTitle) setSourceAudioTitle(gp.sourceAudioTitle);
+        }
+        if (gp.taskType) setTaskType(gp.taskType);
+        if (gp.lmBackend) setLmBackend(gp.lmBackend);
+        if (gp.lmModel) setLmModel(gp.lmModel);
+      } else if (initialData.song.ditModel) {
+        setSelectedModel(initialData.song.ditModel);
+      }
     }
   }, [initialData]);
 
@@ -463,12 +499,12 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
       if (!isResizing) return;
 
       // Calculate new height based on mouse position relative to the lyrics container top
-      // We can't easily get the container top here without a ref to it, 
+      // We can't easily get the container top here without a ref to it,
       // but we can use dy (delta y) from the previous position if we tracked it,
       // OR simpler: just update based on movement if we track the start.
       //
-      // Better approach for absolute sizing: 
-      // 1. Get the bounding rect of the textarea wrapper on mount/resize start? 
+      // Better approach for absolute sizing:
+      // 1. Get the bounding rect of the textarea wrapper on mount/resize start?
       //    We can just rely on the fact that we are dragging the bottom.
       //    So new height = currentMouseY - topOfElement.
 
@@ -505,13 +541,14 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     };
   }, [isResizing]);
 
-  const refreshModels = useCallback(async () => {
+  const refreshModels = useCallback(async (): Promise<boolean> => {
     try {
       const modelsRes = await fetch('/api/generate/models');
       if (modelsRes.ok) {
         const data = await modelsRes.json();
         const models = data.models || [];
         if (models.length > 0) {
+          if (!isMountedRef.current) return false;
           setFetchedModels(models);
           // Always sync to the backend's active model
           const active = models.find((m: any) => m.is_active);
@@ -519,16 +556,45 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
             setSelectedModel(active.name);
             localStorage.setItem('ace-model', active.name);
           }
+          return true;
         }
       }
     } catch {
       // ignore - will use fallback model list
     }
+    return false;
   }, []);
 
+  const refreshLoraStatus = useCallback(async () => {
+    if (!token) return;
+    try {
+      const status = await generateApi.getLoraStatus(token);
+      if (!isMountedRef.current) return;
+      setLoraLoaded(Boolean(status?.lora_loaded));
+      if (typeof status?.lora_scale === 'number' && Number.isFinite(status.lora_scale)) {
+        setLoraScale(status.lora_scale);
+      }
+    } catch {
+      // ignore - backend may be starting
+    }
+  }, [token]);
+
   useEffect(() => {
+    isMountedRef.current = true;
+    let cancelled = false;
     const loadModelsAndLimits = async () => {
-      await refreshModels();
+      // Backend can start slowly; retry silently until models are available.
+      const attemptRefresh = async (attempt: number) => {
+        if (cancelled) return;
+        const ok = await refreshModels();
+        if (!ok) {
+          const delayMs = Math.min(15000, 800 * Math.pow(1.6, attempt));
+          modelsRetryTimeoutRef.current = window.setTimeout(() => { void attemptRefresh(attempt + 1); }, delayMs);
+        }
+      };
+      void attemptRefresh(0);
+
+      void refreshLoraStatus();
 
       // Fetch limits
       try {
@@ -547,7 +613,21 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     };
 
     loadModelsAndLimits();
+    return () => {
+      // best-effort cancel retry loop
+      cancelled = true;
+      isMountedRef.current = false;
+      if (modelsRetryTimeoutRef.current != null) {
+        window.clearTimeout(modelsRetryTimeoutRef.current);
+        modelsRetryTimeoutRef.current = null;
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    };
   }, []);
+
+  useEffect(() => {
+    void refreshLoraStatus();
+  }, [refreshLoraStatus]);
 
   // Re-fetch models after generation completes to update active model
   const prevIsGeneratingRef = useRef(isGenerating);
@@ -1126,7 +1206,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 {availableModels.length === 0 ? '...' : getModelDisplayName(selectedModel)}
                 <ChevronDown size={10} className="text-zinc-600 dark:text-zinc-400" />
               </button>
-              
+
               {/* Floating Model Menu */}
               {showModelMenu && availableModels.length > 0 && (
                 <div className="absolute top-full right-0 mt-1 w-72 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl z-50 overflow-hidden">
@@ -1205,7 +1285,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                   className="flex-1 min-w-[180px] bg-transparent text-sm text-zinc-900 dark:text-white focus:outline-none"
                 >
                   {VOCAL_LANGUAGE_KEYS.map(lang => (
-                    <option key={lang.value} value={lang.value}>{lang.key}</option>
+                    <option key={lang.value} value={lang.value}>{t(lang.key)}</option>
                   ))}
                 </select>
                 <div className="flex items-center gap-2">
@@ -1617,7 +1697,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                       </button>
                     )}
                   </div>
-                  
+
                   {/* Second Level: Sub Genre (only show when main genre is selected) */}
                   {selectedMainGenre && filteredSubGenres.length > 0 && (
                     <div className="flex gap-2 pl-4 border-l-2 border-zinc-200 dark:border-white/10">
@@ -1839,7 +1919,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
           {/* Key & Time Signature */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Key</label>
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('key')}</label>
               <select
                 value={keyScale}
                 onChange={(e) => setKeyScale(e.target.value)}
@@ -1852,7 +1932,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Time</label>
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('time')}</label>
               <select
                 value={timeSignature}
                 onChange={(e) => setTimeSignature(e.target.value)}
@@ -1990,7 +2070,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               <select
                 value={lmBackend}
                 onChange={(e) => setLmBackend(e.target.value as 'pt' | 'vllm')}
-                className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none"
+                className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
               >
                 <option value="pt">{t('lmBackendPt')}</option>
                 <option value="vllm">{t('lmBackendVllm')}</option>
@@ -2004,7 +2084,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               <select
                 value={lmModel}
                 onChange={(e) => { const v = e.target.value; setLmModel(v); localStorage.setItem('ace-lmModel', v); }}
-                className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none"
+                className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
               >
                 <option value="acestep-5Hz-lm-0.6B">{t('lmModel06B')}</option>
                 <option value="acestep-5Hz-lm-1.7B">{t('lmModel17B')}</option>
@@ -2035,7 +2115,8 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                   onChange={(e) => setSeed(Number(e.target.value))}
                   placeholder={t('enterFixedSeed')}
                   disabled={randomSeed}
-                  className={`flex-1 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none ${randomSeed ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                  className={`flex-1 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${randomSeed ? 'opacity-40 cursor-not-allowed' : ''}`}
                 />
               </div>
               <p className="text-[10px] text-zinc-500">{randomSeed ? t('randomSeedRecommended') : t('fixedSeedReproducible')}</p>
@@ -2703,7 +2784,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         >
           <Sparkles size={18} />
           <span>
-            {isGenerating 
+            {isGenerating
               ? t('generating')
               : bulkCount > 1
                 ? `${t('createButton')} ${bulkCount} ${t('jobs')} (${bulkCount * batchSize} ${t('variations')})`

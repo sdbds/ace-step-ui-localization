@@ -105,7 +105,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
   });
 
   // Adapter Type
-  const [adapterType, setAdapterType] = useState<'lora' | 'lokr'>('lora');
+  const [adapterType, setAdapterType] = useState<'lora' | 'lokr'>('lokr');
 
   // LoKR Settings
   const [lokrLinearDim, setLokrLinearDim] = useState(64);
@@ -401,10 +401,13 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
   useEffect(() => {
     if (adapterType !== 'lokr') return;
     if (learningRate === 3e-4) {
-      setLearningRate(0.003);
+      setLearningRate(0.001);
     }
     if (trainEpochs === 1000) {
       setTrainEpochs(500);
+    }
+    if (saveEveryNEpochs === 200) {
+      setSaveEveryNEpochs(100);
     }
     if (!lokrWeightDecompose) {
       setLokrWeightDecompose(true);
@@ -535,24 +538,25 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
     if (!token) return;
     try {
       const sample = await trainingApi.getSample(index, token);
-      setEditingSample(sample);
+      const sampleWithIndex = { ...sample, index };
+      setEditingSample(sampleWithIndex);
       // Handle timesignature: if it's a number, convert to 'n/4' format
-      let timesig = sample.timesignature || '';
+      let timesig = sampleWithIndex.timesignature || '';
       if (timesig && !isNaN(Number(timesig))) {
         timesig = `${timesig}/4`;
       }
 
       setEditForm({
-        caption: sample.caption || '',
-        lyrics: sample.lyrics || '',
-        bpm: sample.bpm?.toString() || '',
-        keyscale: sample.keyscale || '',
+        caption: sampleWithIndex.caption || '',
+        lyrics: sampleWithIndex.lyrics || '',
+        bpm: sampleWithIndex.bpm?.toString() || '',
+        keyscale: sampleWithIndex.keyscale || '',
         timesignature: timesig,
-        genre: sample.genre || '',
-        prompt_override: sample.prompt_override || '',
-        language: sample.language || 'unknown',
-        duration: sample.duration?.toString() || '',
-        is_instrumental: sample.is_instrumental || false,
+        genre: sampleWithIndex.genre || '',
+        prompt_override: sampleWithIndex.prompt_override || '',
+        language: sampleWithIndex.language || 'unknown',
+        duration: sampleWithIndex.duration?.toString() || '',
+        is_instrumental: sampleWithIndex.is_instrumental || false,
       });
     } catch (error: any) {
       console.error('Failed to load sample:', error);
@@ -562,7 +566,12 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
   const handleSaveSample = async () => {
     if (!token || !editingSample) return;
     try {
-      const result = await trainingApi.updateSample(editingSample.index, {
+      const sampleIndex = Number((editingSample as any).index);
+      if (!Number.isFinite(sampleIndex)) {
+        throw new Error('Invalid sample index');
+      }
+
+      const result = await trainingApi.updateSample(sampleIndex, {
         caption: editForm.caption || undefined,
         lyrics: editForm.lyrics || undefined,
         bpm: editForm.bpm ? Number(editForm.bpm) : null,
@@ -1836,7 +1845,14 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                   </label>
                   <select
                     value={editForm.language}
-                    onChange={(e) => setEditForm({ ...editForm, language: e.target.value })}
+                    onChange={(e) => {
+                      const language = e.target.value;
+                      setEditForm((prev) => ({
+                        ...prev,
+                        language,
+                        is_instrumental: language && language !== 'unknown' ? false : prev.is_instrumental,
+                      }));
+                    }}
                     className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
                   >
                     {VOCAL_LANGUAGE_VALUES.map(lang => (
@@ -1851,7 +1867,14 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                   type="checkbox"
                   id="instrumental-check"
                   checked={editForm.is_instrumental}
-                  onChange={(e) => setEditForm({ ...editForm, is_instrumental: e.target.checked })}
+                  onChange={(e) => {
+                    const is_instrumental = e.target.checked;
+                    setEditForm((prev) => ({
+                      ...prev,
+                      is_instrumental,
+                      language: is_instrumental ? 'unknown' : prev.language,
+                    }));
+                  }}
                   className="w-4 h-4 text-pink-500 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 rounded focus:ring-pink-500"
                 />
                 <label htmlFor="instrumental-check" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">

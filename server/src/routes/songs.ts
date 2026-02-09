@@ -106,8 +106,9 @@ router.get('/', authMiddleware, async (req: AuthenticatedRequest, res: Response)
   try {
     const result = await pool.query(
       `SELECT s.id, s.title, s.lyrics, s.style, s.caption, s.cover_url, s.audio_url,
-              s.duration, s.bpm, s.key_scale, s.time_signature, s.tags, s.is_public, 
+              s.duration, s.bpm, s.key_scale, s.time_signature, s.tags, s.is_public,
               s.like_count, s.view_count, s.user_id, s.model as dit_model, s.created_at,
+              s.generation_params,
               COALESCE(u.username, 'Anonymous') as creator
        FROM songs s
        LEFT JOIN users u ON s.user_id = u.id
@@ -158,6 +159,7 @@ router.get('/public/featured', optionalAuthMiddleware, async (_req: Authenticate
         bpm: row.bpm,
         key_scale: row.key_scale,
         time_signature: row.time_signature,
+        generation_params: row.generation_params,
         tags: row.tags || [],
         like_count: row.like_count || 0,
         view_count: row.view_count || 0,
@@ -389,8 +391,8 @@ router.patch('/:id', authMiddleware, async (req: AuthenticatedRequest, res: Resp
     values.push(req.params.id);
 
     await pool.query(
-      `UPDATE songs 
-       SET ${updates.join(', ')} 
+      `UPDATE songs
+       SET ${updates.join(', ')}
        WHERE id = $${paramCount}`,
       values
     );
@@ -398,8 +400,9 @@ router.patch('/:id', authMiddleware, async (req: AuthenticatedRequest, res: Resp
     // Fetch complete song data with creator info
     const result = await pool.query(
       `SELECT s.id, s.title, s.lyrics, s.style, s.caption, s.cover_url, s.audio_url,
-              s.duration, s.bpm, s.key_scale, s.time_signature, s.tags, s.is_public, 
+              s.duration, s.bpm, s.key_scale, s.time_signature, s.tags, s.is_public,
               s.like_count, s.view_count, s.user_id, s.model as dit_model, s.created_at,
+              s.generation_params,
               COALESCE(u.username, 'Anonymous') as creator
        FROM songs s
        LEFT JOIN users u ON s.user_id = u.id

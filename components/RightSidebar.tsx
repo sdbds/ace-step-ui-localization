@@ -38,6 +38,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpe
     const [titleDraft, setTitleDraft] = useState('');
     const [titleError, setTitleError] = useState<string | null>(null);
     const [isSavingTitle, setIsSavingTitle] = useState(false);
+    const [genParamsExpanded, setGenParamsExpanded] = useState(false);
 
     useEffect(() => {
         if (song) {
@@ -531,6 +532,125 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpe
                             </div>
                         </div>
                     </div>
+
+                    {/* Generation Parameters Metadata */}
+                    {song.generationParams && (
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Sparkles size={12} />
+                                    {t('generationParameters')}
+                                </h3>
+                                <button
+                                    onClick={() => setGenParamsExpanded(v => !v)}
+                                    className="text-[10px] font-medium text-zinc-500 hover:text-black dark:hover:text-white transition-colors"
+                                >
+                                    {genParamsExpanded ? t('less') : t('more')}
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                                {(() => {
+                                    const gp = song.generationParams;
+                                    const items: { label: string; value: string }[] = [];
+                                    const moreItems: { label: string; value: string }[] = [];
+
+                                    if (gp.ditModel || song.ditModel) {
+                                        items.push({ label: t('metaModel'), value: gp.ditModel || song.ditModel });
+                                    }
+                                    if (gp.bpm && gp.bpm > 0) {
+                                        items.push({ label: t('metaBpm'), value: String(gp.bpm) });
+                                    }
+                                    if (gp.keyScale) {
+                                        items.push({ label: t('metaKey'), value: gp.keyScale });
+                                    }
+                                    if (gp.timeSignature) {
+                                        items.push({ label: t('metaTimeSignature'), value: String(gp.timeSignature) });
+                                    }
+                                    if (gp.duration != null && gp.duration > 0) {
+                                        const mins = Math.floor(gp.duration / 60);
+                                        const secs = gp.duration % 60;
+                                        items.push({ label: t('metaDuration'), value: mins > 0 ? `${mins}m${secs}s` : `${secs}s` });
+                                    }
+                                    if (gp.inferenceSteps) {
+                                        items.push({ label: t('metaInferenceSteps'), value: String(gp.inferenceSteps) });
+                                    }
+                                    if (gp.guidanceScale != null) {
+                                        items.push({ label: t('metaCfg'), value: String(gp.guidanceScale) });
+                                    }
+                                    if (gp.seedText != null && String(gp.seedText).length > 0) {
+                                        items.push({ label: t('metaSeed'), value: String(gp.seedText) });
+                                    } else if (gp.seed != null && String(gp.seed).length > 0) {
+                                        items.push({ label: t('metaSeed'), value: String(gp.seed) });
+                                    }
+                                    if (gp.inferMethod) {
+                                        items.push({ label: t('metaInferMethod'), value: gp.inferMethod.toUpperCase() });
+                                    }
+                                    if (gp.shift != null) {
+                                        items.push({ label: t('metaShift'), value: String(gp.shift) });
+                                    }
+                                    if (gp.audioFormat) {
+                                        items.push({ label: t('metaAudioFormat'), value: gp.audioFormat.toUpperCase() });
+                                    }
+                                    if (gp.lmModel) {
+                                        items.push({ label: t('metaLmModel'), value: gp.lmModel });
+                                    }
+                                    if (gp.genres && gp.genres !== 'N/A') {
+                                        items.push({ label: t('metaGenres'), value: gp.genres });
+                                    }
+
+                                    if (gp.lmBackend) {
+                                        moreItems.push({ label: t('lmBackendLabel'), value: String(gp.lmBackend) });
+                                    }
+                                    if (gp.thinking != null) {
+                                        moreItems.push({ label: t('thinking'), value: gp.thinking ? 'ON' : 'OFF' });
+                                    }
+                                    if (gp.useAdg != null) {
+                                        moreItems.push({ label: t('useAdg'), value: gp.useAdg ? 'ON' : 'OFF' });
+                                    }
+                                    if (gp.batchSize != null) {
+                                        moreItems.push({ label: t('batchSize'), value: String(gp.batchSize) });
+                                    }
+                                    if (gp.allowLmBatch != null) {
+                                        moreItems.push({ label: t('allowLmBatch'), value: gp.allowLmBatch ? 'ON' : 'OFF' });
+                                    }
+                                    if (gp.useCotMetas != null) {
+                                        moreItems.push({ label: t('useCotMetas'), value: gp.useCotMetas ? 'ON' : 'OFF' });
+                                    }
+                                    if (gp.useCotCaption != null) {
+                                        moreItems.push({ label: t('useCotCaption'), value: gp.useCotCaption ? 'ON' : 'OFF' });
+                                    }
+                                    if (gp.useCotLanguage != null) {
+                                        moreItems.push({ label: t('useCotLanguage'), value: gp.useCotLanguage ? 'ON' : 'OFF' });
+                                    }
+                                    if (gp.autogen != null) {
+                                        moreItems.push({ label: t('autogen'), value: gp.autogen ? 'ON' : 'OFF' });
+                                    }
+                                    if (gp.constrainedDecodingDebug != null) {
+                                        moreItems.push({ label: t('constrainedDecodingDebug'), value: gp.constrainedDecodingDebug ? 'ON' : 'OFF' });
+                                    }
+                                    if (gp.isFormatCaption != null) {
+                                        moreItems.push({ label: t('formatCaption'), value: gp.isFormatCaption ? 'ON' : 'OFF' });
+                                    }
+                                    if (gp.getScores != null) {
+                                        moreItems.push({ label: t('getScores'), value: gp.getScores ? 'ON' : 'OFF' });
+                                    }
+                                    if (gp.getLrc != null) {
+                                        moreItems.push({ label: t('getLrcLyrics'), value: gp.getLrc ? 'ON' : 'OFF' });
+                                    }
+
+                                    const all = genParamsExpanded ? [...items, ...moreItems] : items;
+                                    if (all.length === 0) return null;
+
+                                    return all.map((item, idx) => (
+                                        <div key={idx} className="flex items-center justify-between px-2.5 py-1.5 bg-zinc-100 dark:bg-white/5 rounded-lg border border-zinc-200/50 dark:border-white/5">
+                                            <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">{item.label}</span>
+                                            <span className="text-[11px] font-semibold text-zinc-800 dark:text-zinc-200 font-mono truncate ml-2 max-w-[120px]" title={item.value}>{item.value}</span>
+                                        </div>
+                                    ));
+                                })()}
+                            </div>
+                        </div>
+                    )}
 
                 </div>
             </div>

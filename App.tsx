@@ -292,6 +292,92 @@ function AppContent() {
     return () => window.removeEventListener('popstate', handleUrlChange);
   }, []);
 
+  const normalizeGenerationParams = useCallback((s: any) => {
+    try {
+      const normalizeObject = (gp: any) => {
+        if (!gp || typeof gp !== 'object') return undefined;
+
+        const bpm = gp.bpm ?? s?.bpm ?? s?.metas?.bpm;
+        const duration = gp.duration ?? s?.duration ?? s?.metas?.duration;
+        const keyScale = gp.keyScale ?? gp.key_scale ?? gp.keyscale ?? s?.key_scale ?? s?.metas?.keyscale;
+        const normalizeTimeSignature = (v: unknown) => {
+          if (v == null) return undefined;
+          if (typeof v === 'string') {
+            const str = v.trim();
+            if (!str) return undefined;
+            if (str.includes('/')) return str;
+            const n = Number(str);
+            return Number.isFinite(n) ? `${n}/4` : str;
+          }
+          if (typeof v === 'number' && Number.isFinite(v)) return `${v}/4`;
+          const str = String(v);
+          return str.includes('/') ? str : str;
+        };
+        const timeSignature = normalizeTimeSignature(
+          gp.timeSignature ?? gp.time_signature ?? gp.timesignature ?? s?.time_signature ?? s?.metas?.timesignature
+        );
+        const ditModel = gp.ditModel ?? gp.dit_model ?? s?.dit_model ?? s?.ditModel;
+        const lmModel = gp.lmModel ?? gp.lm_model ?? s?.lm_model;
+        const genres = gp.genres ?? s?.metas?.genres;
+
+        const generationInfo = gp.generationInfo ?? gp.generation_info ?? s?.generation_info;
+        const inferenceSteps = (() => {
+          if (gp.inferenceSteps != null) return gp.inferenceSteps;
+          if (gp.inference_steps != null) return gp.inference_steps;
+          const gi = generationInfo;
+          if (typeof gi !== 'string') return undefined;
+          const m = gi.match(/Steps:\s*(\d+)/i);
+          if (!m?.[1]) return undefined;
+          const n = Number(m[1]);
+          return Number.isFinite(n) ? n : undefined;
+        })();
+
+        const seedText = gp.seedText ?? gp.seed_text ?? (s?.seed_value != null ? String(s.seed_value) : undefined);
+        const seed = (() => {
+          if (gp.seed != null) return gp.seed;
+          if (!seedText) return undefined;
+          const first = String(seedText).split(',')[0]?.trim();
+          if (!first) return undefined;
+          const n = Number(first);
+          return Number.isFinite(n) ? n : undefined;
+        })();
+
+        const merged = { ...gp };
+        if (bpm != null) merged.bpm = bpm;
+        if (duration != null) merged.duration = duration;
+        if (keyScale != null) merged.keyScale = keyScale;
+        if (timeSignature != null) merged.timeSignature = timeSignature;
+        if (ditModel != null) merged.ditModel = ditModel;
+        if (lmModel != null) merged.lmModel = lmModel;
+        if (genres != null) merged.genres = genres;
+        if (seed != null) merged.seed = seed;
+        if (seedText != null) merged.seedText = seedText;
+        if (inferenceSteps != null) merged.inferenceSteps = inferenceSteps;
+        if (generationInfo != null) merged.generationInfo = generationInfo;
+
+        return merged;
+      };
+
+      if (s?.generation_params) {
+        const parsed = typeof s.generation_params === 'string' ? JSON.parse(s.generation_params) : s.generation_params;
+        const normalized = normalizeObject(parsed);
+        if (normalized) return normalized;
+      }
+
+      if (s?.metas) {
+        return normalizeObject({});
+      }
+
+      if (s?.bpm != null || s?.key_scale != null || s?.time_signature != null) {
+        return normalizeObject({});
+      }
+
+      return undefined;
+    } catch {
+      return undefined;
+    }
+  }, []);
+
   // Load Songs Effect
   useEffect(() => {
     if (!isAuthenticated || !token) return;
@@ -319,14 +405,7 @@ function AppContent() {
           userId: s.user_id,
           creator: s.creator,
           ditModel: s.ditModel,
-          generationParams: (() => {
-            try {
-              if (!s.generation_params) return undefined;
-              return typeof s.generation_params === 'string' ? JSON.parse(s.generation_params) : s.generation_params;
-            } catch {
-              return undefined;
-            }
-          })(),
+          generationParams: normalizeGenerationParams(s),
         });
 
         const mySongs = mySongsRes.songs.map(mapSong);
@@ -600,14 +679,7 @@ function AppContent() {
         userId: s.user_id,
         creator: s.creator,
         ditModel: s.ditModel,
-        generationParams: (() => {
-          try {
-            if (!s.generation_params) return undefined;
-            return typeof s.generation_params === 'string' ? JSON.parse(s.generation_params) : s.generation_params;
-          } catch {
-            return undefined;
-          }
-        })(),
+        generationParams: normalizeGenerationParams(s),
       }));
 
       // Preserve any generating songs that aren't in the loaded list

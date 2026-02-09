@@ -349,6 +349,23 @@ export const translations = {
     lyricsSection: 'LYRICS',
     copyLyrics: 'Copy',
 
+    // RightSidebar - Generation Metadata
+    generationParameters: 'GENERATION PARAMETERS',
+    metaBpm: 'BPM',
+    metaKey: 'Key',
+    metaTimeSignature: 'Time Sig.',
+    metaDuration: 'Duration',
+    metaInferenceSteps: 'Steps',
+    metaCfg: 'CFG',
+    metaSeed: 'Seed',
+    metaModel: 'Model',
+    metaInferMethod: 'Method',
+    metaAudioFormat: 'Format',
+    metaShift: 'Shift',
+    metaLmModel: 'LM Model',
+    metaGenres: 'Genres',
+    metaDefault: 'Default',
+
     // Languages
     japanese: 'Japanese',
     spanish: 'Spanish',
@@ -958,6 +975,23 @@ export const translations = {
     styleTags: '风格与标签',
     lyricsSection: '歌词',
     copyLyrics: '复制',
+
+    // RightSidebar - Generation Metadata
+    generationParameters: '生成参数',
+    metaBpm: 'BPM',
+    metaKey: '调号',
+    metaTimeSignature: '拍号',
+    metaDuration: '时长',
+    metaInferenceSteps: '推理步数',
+    metaCfg: 'CFG',
+    metaSeed: '种子',
+    metaModel: '模型',
+    metaInferMethod: '推理方式',
+    metaAudioFormat: '格式',
+    metaShift: 'Shift',
+    metaLmModel: 'LM 模型',
+    metaGenres: '风格',
+    metaDefault: '默认',
 
     // Languages
     japanese: '日语',
@@ -1569,6 +1603,23 @@ export const translations = {
     lyricsSection: '歌詞',
     copyLyrics: 'コピー',
 
+    // RightSidebar - Generation Metadata
+    generationParameters: '生成パラメータ',
+    metaBpm: 'BPM',
+    metaKey: 'キー',
+    metaTimeSignature: '拍子',
+    metaDuration: '長さ',
+    metaInferenceSteps: 'ステップ数',
+    metaCfg: 'CFG',
+    metaSeed: 'シード',
+    metaModel: 'モデル',
+    metaInferMethod: '推論方法',
+    metaAudioFormat: 'フォーマット',
+    metaShift: 'シフト',
+    metaLmModel: 'LMモデル',
+    metaGenres: 'ジャンル',
+    metaDefault: 'デフォルト',
+
     // Languages
     japanese: '日本語',
     spanish: 'スペイン語',
@@ -2178,6 +2229,23 @@ export const translations = {
     styleTags: '스타일 및 태그',
     lyricsSection: '가사',
     copyLyrics: '복사',
+
+    // RightSidebar - Generation Metadata
+    generationParameters: '생성 매개변수',
+    metaBpm: 'BPM',
+    metaKey: '키',
+    metaTimeSignature: '박자',
+    metaDuration: '길이',
+    metaInferenceSteps: '추론 단계',
+    metaCfg: 'CFG',
+    metaSeed: '시드',
+    metaModel: '모델',
+    metaInferMethod: '추론 방법',
+    metaAudioFormat: '포맷',
+    metaShift: '시프트',
+    metaLmModel: 'LM 모델',
+    metaGenres: '장르',
+    metaDefault: '기본값',
 
     // Languages
     japanese: '일본어',

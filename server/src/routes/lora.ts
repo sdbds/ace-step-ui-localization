@@ -11,7 +11,7 @@ async function proxyToAceStep(endpoint: string, method: string, data?: any) {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    
+
     if (ACESTEP_API_KEY) {
       headers['x-api-key'] = ACESTEP_API_KEY;
       headers['Authorization'] = `Bearer ${ACESTEP_API_KEY}`;
@@ -27,7 +27,7 @@ async function proxyToAceStep(endpoint: string, method: string, data?: any) {
     }
 
     const response = await fetch(`${ACESTEP_API_URL}${endpoint}`, options);
-    
+
     if (!response.ok) {
       const errorData: any = await response.json().catch(() => ({ error: 'Request failed' }));
       const detail = errorData?.detail;
@@ -40,7 +40,7 @@ async function proxyToAceStep(endpoint: string, method: string, data?: any) {
     }
 
     const result = await response.json();
-    
+
     if (result && typeof result === 'object') {
       if ('code' in result && result.code && result.code !== 200) {
         throw new Error(result.error || result.message || 'Request failed');
@@ -85,6 +85,15 @@ router.post('/toggle', authMiddleware, async (req: AuthenticatedRequest, res: Re
 router.post('/scale', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const result = await proxyToAceStep('/v1/lora/scale', 'POST', req.body);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/status', authMiddleware, async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const result = await proxyToAceStep('/v1/lora/status', 'GET');
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
