@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Extract Stems - ACE-Step UI</title>
+    <title data-i18n="stemExtraction">Extract Stems - ACE-Step UI</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -64,6 +64,27 @@
         .badge-detecting { background: var(--zinc-800); color: var(--zinc-400); }
         .badge-gpu { background: rgba(16, 185, 129, 0.2); color: var(--emerald-400); }
         .badge-cpu { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        
+        /* Language Selector */
+        .lang-selector {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .lang-btn {
+            padding: 0.25rem 0.75rem;
+            background: var(--suno-card);
+            border: 1px solid var(--zinc-800);
+            border-radius: 0.375rem;
+            color: var(--zinc-400);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .lang-btn:hover { background: var(--suno-hover); color: var(--zinc-200); }
+        .lang-btn.active { background: var(--emerald-600); color: white; border-color: var(--emerald-600); }
 
         .card {
             background: var(--suno-card);
@@ -312,20 +333,28 @@
     </style>
 </head>
 <body>
+    <!-- Language Selector -->
+    <div class="lang-selector">
+        <button class="lang-btn active" data-lang="en" onclick="DemucsI18n.setLanguage('en');location.reload()">EN</button>
+        <button class="lang-btn" data-lang="zh" onclick="DemucsI18n.setLanguage('zh');location.reload()">ZH</button>
+        <button class="lang-btn" data-lang="ja" onclick="DemucsI18n.setLanguage('ja');location.reload()">JA</button>
+        <button class="lang-btn" data-lang="ko" onclick="DemucsI18n.setLanguage('ko');location.reload()">KO</button>
+    </div>
+
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>Stem Extraction</h1>
-            <p>AI-powered audio separation using Demucs</p>
-            <span id="backendBadge" class="badge badge-detecting">Detecting...</span>
+            <h1 data-i18n="stemExtraction">Stem Extraction</h1>
+            <p data-i18n="aiPoweredSeparation">AI-powered audio separation using Demucs</p>
+            <span id="backendBadge" class="badge badge-detecting" data-i18n="detecting">Detecting...</span>
         </div>
 
         <!-- Upload Card -->
         <div class="card">
             <div id="dropZone" class="drop-zone">
                 <div class="drop-zone-icon">🎵</div>
-                <p>Drop audio file here</p>
-                <p class="hint">or click to select</p>
+                <p data-i18n="dropAudioHere">Drop audio file here</p>
+                <p class="hint" data-i18n="orClickToSelect">or click to select</p>
                 <input type="file" id="fileInput" accept="audio/*">
                 <p id="audioFileName" class="file-name"></p>
             </div>
@@ -334,30 +363,30 @@
         <!-- Processing Card -->
         <div class="card">
             <div class="processing-header">
-                <h3>Processing</h3>
-                <button id="processBtn" class="btn btn-primary" disabled>Extract Stems</button>
+                <h3 data-i18n="processing">Processing</h3>
+                <button id="processBtn" class="btn btn-primary" disabled data-i18n="extractStems">Extract Stems</button>
             </div>
             <div class="progress-bar">
                 <div id="progressFill" class="progress-fill"></div>
             </div>
-            <p id="status" class="status">Select an audio file to begin</p>
+            <p id="status" class="status" data-i18n="selectAudioToBegin">Select an audio file to begin</p>
 
             <div id="statsRow" class="stats-row">
                 <div class="stat-item">
                     <div id="statElapsed" class="stat-value">0:00</div>
-                    <div class="stat-label">Elapsed</div>
+                    <div class="stat-label" data-i18n="elapsed">Elapsed</div>
                 </div>
                 <div class="stat-item">
                     <div id="statSegment" class="stat-value">0/0</div>
-                    <div class="stat-label">Segment</div>
+                    <div class="stat-label" data-i18n="segment">Segment</div>
                 </div>
                 <div class="stat-item">
                     <div id="statSpeed" class="stat-value">-</div>
-                    <div class="stat-label">Speed</div>
+                    <div class="stat-label" data-i18n="speed">Speed</div>
                 </div>
                 <div class="stat-item">
                     <div id="statETA" class="stat-value">--:--</div>
-                    <div class="stat-label">ETA</div>
+                    <div class="stat-label" data-i18n="eta">ETA</div>
                 </div>
             </div>
 
@@ -369,14 +398,14 @@
             <div class="results-card">
                 <div class="results-header">
                     <div class="results-header-text">
-                        <h3>Separated Tracks</h3>
-                        <p>Click to play, download individual stems</p>
+                        <h3 data-i18n="separatedTracks">Separated Tracks</h3>
+                        <p data-i18n="clickToPlayDownload">Click to play, download individual stems</p>
                     </div>
                     <button class="download-all-btn" onclick="downloadAllStems()">
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                         </svg>
-                        Download All
+                        <span data-i18n="downloadAll">Download All</span>
                     </button>
                 </div>
                 <div id="trackList"></div>
@@ -384,6 +413,17 @@
         </div>
     </div>
 
+    <script src="i18n.js"></script>
     <script type="module" src="app.js"></script>
+    <script>
+        // Set active language button
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentLang = DemucsI18n.getLanguage();
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-lang') === currentLang);
+            });
+            DemucsI18n.updatePage();
+        });
+    </script>
 </body>
 </html>

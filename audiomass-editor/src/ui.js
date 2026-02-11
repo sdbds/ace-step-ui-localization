@@ -93,8 +93,9 @@
 		};
 
 		app.listenFor ('ShowError', function( message ) {
+			var i18n = w.AudioMassI18n;
 			new PKSimpleModal ({
-				title : 'Oops! Something is not right',
+				title : i18n.t('errorTitle'),
 				clss:'pk_modal_anim',
 				ondestroy : function( q ) {
 					app.ui.InteractionHandler.on = false;
@@ -123,15 +124,16 @@
 
 	//top bar config list
 	function _topbarConfig ( app, ui ) {
+		var i18n = w.AudioMassI18n;
 		return [
 			{
-				name:'File',
+				name: i18n.t('file'),
 				children : [
 					{
-						name: 'Export / Download',
+						name: i18n.t('exportDownload'),
 						action: function () {
 								new PKSimpleModal({
-								  title:'Export / Download',
+								  title: i18n.t('exportTitle')
 
 								  ondestroy: function( q ) {
 									app.ui.InteractionHandler.on = false;
@@ -194,11 +196,11 @@
 										}
 									}
 								  ],
-								  body:'<div class="pk_row"><label for="k0">File Name</label>' + 
-									'<input style="min-width:250px" placeholder="mp3 filename" value="audiomass-output.mp3" ' +
+								  body:'<div class="pk_row"><label for="k0">' + i18n.t('fileName') + '</label>' + 
+									'<input style="min-width:250px" placeholder="' + i18n.t('filenamePlaceholder') + '" value="audiomass-output.mp3" ' +
 									'class="pk_txt" type="text" id="k0" /></div>'+
 
-									'<div class="pk_row" id="frmtex" style="padding-bottom:4px"><label style="display:inline">Format</label>'+
+									'<div class="pk_row" id="frmtex" style="padding-bottom:4px"><label style="display:inline">' + i18n.t('format') + '</label>'+
 									'<input type="radio" class="pk_check" id="k01" name="frmtex" checked value="mp3">'+
 									'<label for="k01">mp3</label>' +
 									'<input type="radio" class="pk_check" id="k02" name="frmtex" value="wav">'+  

@@ -178,10 +178,17 @@ router.get('/dataset/sample/:index', authMiddleware, async (req: AuthenticatedRe
 
 router.put('/dataset/sample/:index', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    console.log('PUT /dataset/sample/:index - Request body:', JSON.stringify(req.body, null, 2));
     const result = await proxyToAceStep(`/v1/dataset/sample/${req.params.index}`, 'PUT', req.body);
     res.json(result);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error('PUT /dataset/sample/:index - Error:', error.message);
+    // Return 422 status if validation error
+    if (error.message.includes('validation') || error.message.includes('422')) {
+      res.status(422).json({ error: error.message, body: req.body });
+    } else {
+      res.status(500).json({ error: error.message });
+    }
   }
 });
 

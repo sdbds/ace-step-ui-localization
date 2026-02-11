@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, Play, Square, FolderOpen, Save, FileJson, Zap, Database, ChevronDown, ChevronUp, Edit2, X } from 'lucide-react';
+import { Upload, Play, Square, FolderOpen, Save, FileJson, Zap, Database, ChevronDown, ChevronUp, Edit2, X, Music } from 'lucide-react';
+import { EditableSlider } from './EditableSlider';
 
 const VOCAL_LANGUAGE_VALUES = [
   { value: 'unknown', key: 'autoInstrumental' as const },
@@ -42,9 +43,11 @@ interface DisplaySample {
   caption: string;
 }
 
-interface TrainingPanelProps {}
+interface TrainingPanelProps {
+  onPlaySample?: (audioPath: string, title: string) => void;
+}
 
-export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
+export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) => {
   const { t } = useI18n();
   const { token } = useAuth();
 
@@ -538,8 +541,18 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
     if (!token) return;
     try {
       const sample = await trainingApi.getSample(index, token);
+      console.log('[TrainingPanel] Loaded sample:', sample);
       const sampleWithIndex = { ...sample, index };
       setEditingSample(sampleWithIndex);
+      
+      // Auto-play the sample when opening editor
+      if (onPlaySample && sampleWithIndex.audio_path) {
+        console.log('[TrainingPanel] Playing sample with path:', sampleWithIndex.audio_path);
+        onPlaySample(sampleWithIndex.audio_path, sampleWithIndex.filename);
+      } else {
+        console.warn('[TrainingPanel] Cannot play sample - no audio_path:', sampleWithIndex);
+      }
+      
       // Handle timesignature: if it's a number, convert to 'n/4' format
       let timesig = sampleWithIndex.timesignature || '';
       if (timesig && !isNaN(Number(timesig))) {
@@ -571,18 +584,30 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
         throw new Error('Invalid sample index');
       }
 
-      const result = await trainingApi.updateSample(sampleIndex, {
-        caption: editForm.caption || undefined,
-        lyrics: editForm.lyrics || undefined,
-        bpm: editForm.bpm ? Number(editForm.bpm) : null,
-        keyscale: editForm.keyscale || undefined,
-        timesignature: editForm.timesignature || undefined,
-        genre: editForm.genre || undefined,
-        prompt_override: editForm.prompt_override || null,
-        language: editForm.language || undefined,
-        duration: editForm.duration ? Number(editForm.duration) : undefined,
-        is_instrumental: editForm.is_instrumental,
-      }, token);
+      // Build params object with all fields (backend requires them)
+      const params: any = {
+        // sample_idx is required by UpdateSampleRequest model
+        sample_idx: sampleIndex,
+        
+        // Required string fields - send empty string if not set
+        caption: editForm.caption?.trim() || '',
+        lyrics: editForm.lyrics?.trim() || '',
+        keyscale: editForm.keyscale?.trim() || '',
+        timesignature: editForm.timesignature?.trim() || '',
+        genre: editForm.genre?.trim() || '',
+        language: editForm.language?.trim() && editForm.language !== 'unknown' ? editForm.language.trim() : '',
+        prompt_override: editForm.prompt_override?.trim() || null,
+        
+        // Boolean - always include
+        is_instrumental: !!editForm.is_instrumental,
+      };
+      
+      // Numeric fields - send null if not set
+      params.bpm = editForm.bpm ? Number(editForm.bpm) : null;
+      params.duration = editForm.duration ? Number(editForm.duration) : null;
+
+      console.log('Sending updateSample params:', JSON.stringify(params, null, 2));
+      const result = await trainingApi.updateSample(sampleIndex, params, token);
 
       const updatedSamples = await trainingApi.getSamples(token);
       setAudioFiles(transformSamples(updatedSamples.samples));
@@ -898,149 +923,153 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
               </div>
             )}
 
-            {/* Dataset Settings */}
-            <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 rounded-xl border-2 border-indigo-200 dark:border-indigo-800 shadow-md">
-              <button
-                onClick={() => setDatasetSettingsOpen(!datasetSettingsOpen)}
-                className="w-full flex items-center justify-between p-4 hover:bg-zinc-100 dark:hover:bg-zinc-700/50 transition-colors rounded-t-xl"
-              >
-                <h3 className="text-base font-semibold text-zinc-900 dark:text-white">⚙️ {t('datasetSettings')}</h3>
-                {datasetSettingsOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-              </button>
-
-              {datasetSettingsOpen && (
-                <div className="p-4 pt-0 space-y-4">
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    {t('datasetName')}
-                  </label>
-                  <input
-                    type="text"
-                    value={datasetName}
-                    onChange={(e) => setDatasetName(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    {t('customActivationTag')}
-                  </label>
-                  <input
-                    type="text"
-                    value={customTag}
-                    onChange={(e) => setCustomTag(e.target.value)}
-                    placeholder="e.g., 8bit_retro, my_style"
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={allInstrumental}
-                    onChange={(e) => setAllInstrumental(e.target.checked)}
-                    className="w-4 h-4 text-pink-500 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 rounded focus:ring-pink-500"
-                  />
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">{t('allInstrumental')}</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                  {t('tagPosition')}
-                </label>
-                <select
-                  value={tagPosition}
-                  onChange={(e) => setTagPosition(e.target.value as 'prepend' | 'append' | 'replace')}
-                  className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+            {/* Dataset Settings & Auto-Label Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Dataset Settings */}
+              <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 rounded-xl border-2 border-indigo-200 dark:border-indigo-800 shadow-md">
+                <button
+                  onClick={() => setDatasetSettingsOpen(!datasetSettingsOpen)}
+                  className="w-full flex items-center justify-between p-4 hover:bg-zinc-100 dark:hover:bg-zinc-700/50 transition-colors rounded-t-xl"
                 >
-                  <option value="prepend">{t('tagPrepend')}</option>
-                  <option value="append">{t('tagAppend')}</option>
-                  <option value="replace">{t('tagReplace')}</option>
-                </select>
+                  <h3 className="text-base font-semibold text-zinc-900 dark:text-white">⚙️ {t('datasetSettings')}</h3>
+                  {datasetSettingsOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                </button>
+
+                {datasetSettingsOpen && (
+                  <div className="p-4 pt-0 space-y-3">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                          {t('datasetName')}
+                        </label>
+                        <input
+                          type="text"
+                          value={datasetName}
+                          onChange={(e) => setDatasetName(e.target.value)}
+                          className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                          {t('customActivationTag')}
+                        </label>
+                        <input
+                          type="text"
+                          value={customTag}
+                          onChange={(e) => setCustomTag(e.target.value)}
+                          placeholder="e.g., 8bit_retro, my_style"
+                          className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <div className="relative">
+                          <input
+                            type="checkbox"
+                            checked={allInstrumental}
+                            onChange={(e) => setAllInstrumental(e.target.checked)}
+                            className="peer sr-only"
+                          />
+                          <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-pink-500 peer-checked:to-rose-500 peer-checked:border-pink-500 transition-all duration-200 group-hover:border-pink-300 dark:group-hover:border-pink-500/50 shadow-sm" />
+                          <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('allInstrumental')}</span>
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                          {t('tagPosition')}
+                        </label>
+                        <select
+                          value={tagPosition}
+                          onChange={(e) => setTagPosition(e.target.value as 'prepend' | 'append' | 'replace')}
+                          className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        >
+                          <option value="prepend">{t('tagPrepend')}</option>
+                          <option value="append">{t('tagAppend')}</option>
+                          <option value="replace">{t('tagReplace')}</option>
+                        </select>
+                      </div>
+
+                      <EditableSlider
+                        label={`${t('genreRatio')} (%)`}
+                        value={genreRatio}
+                        min={0}
+                        max={100}
+                        step={10}
+                        onChange={setGenreRatio}
+                        formatDisplay={(val) => `${val}%`}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                  {t('genreRatio')}: {genreRatio}%
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="10"
-                  value={genreRatio}
-                  onChange={(e) => setGenreRatio(Number(e.target.value))}
-                  className="w-full"
-                />
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                  {t('genreRatioHint')}
-                </p>
-              </div>
-                </div>
-              )}
-            </div>
-
-            {/* Auto-Label */}
-            <div className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-xl p-4 space-y-4 border-2 border-violet-200 dark:border-violet-800 shadow-md">
+              {/* Auto-Label */}
+              <div className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-xl p-4 space-y-4 border-2 border-violet-200 dark:border-violet-800 shadow-md">
               <h3 className="text-base font-semibold text-zinc-900 dark:text-white">🤖 {t('autoLabelWithAI')}</h3>
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
                 {t('autoLabelDescription')}
               </p>
 
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={skipMetas}
-                    onChange={(e) => setSkipMetas(e.target.checked)}
-                    className="w-4 h-4 text-pink-500 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 rounded focus:ring-pink-500"
-                  />
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">{t('skipMetas')}</span>
+              <div className="flex items-center gap-6">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={skipMetas}
+                      onChange={(e) => setSkipMetas(e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-violet-500 peer-checked:to-purple-500 peer-checked:border-violet-500 transition-all duration-200 group-hover:border-violet-300 dark:group-hover:border-violet-500/50 shadow-sm" />
+                    <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('skipMetas')}</span>
                 </label>
 
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={onlyUnlabeled}
-                    onChange={(e) => setOnlyUnlabeled(e.target.checked)}
-                    className="w-4 h-4 text-pink-500 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 rounded focus:ring-pink-500"
-                  />
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">{t('onlyUnlabeled')}</span>
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={onlyUnlabeled}
+                      onChange={(e) => setOnlyUnlabeled(e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <div className="w-5 h-5 bg-white dark:bg-zinc-800 border-2 border-zinc-300 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-violet-500 peer-checked:to-purple-500 peer-checked:border-violet-500 transition-all duration-200 group-hover:border-violet-400 dark:group-hover:border-violet-500/50" />
+                    <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('onlyUnlabeled')}</span>
                 </label>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    {t('autoLabelChunkSize')}
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={autoLabelChunkSize}
-                    onChange={(e) => setAutoLabelChunkSize(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    {t('autoLabelBatchSize')}
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={autoLabelBatchSize}
-                    onChange={(e) => setAutoLabelBatchSize(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
+              <div className="space-y-4">
+                <EditableSlider
+                  label={t('autoLabelChunkSize')}
+                  value={autoLabelChunkSize}
+                  min={1}
+                  max={64}
+                  step={1}
+                  onChange={setAutoLabelChunkSize}
+                />
+                <EditableSlider
+                  label={t('autoLabelBatchSize')}
+                  value={autoLabelBatchSize}
+                  min={1}
+                  max={8}
+                  step={1}
+                  onChange={setAutoLabelBatchSize}
+                />
               </div>
 
               <button
@@ -1091,6 +1120,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                   {labelProgress}
                 </div>
               )}
+            </div>
             </div>
 
             {/* Save & Preprocess */}
@@ -1253,51 +1283,32 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                 <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 rounded-xl p-4 space-y-4 border-2 border-purple-200 dark:border-purple-800 shadow-md">
                   <h3 className="text-base font-semibold text-zinc-900 dark:text-white">⚙️ {t('loraSettings')}</h3>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                        {t('loraRank')}: {loraRank}
-                      </label>
-                      <input
-                        type="range"
-                        min="4"
-                        max="256"
-                        step="4"
-                        value={loraRank}
-                        onChange={(e) => setLoraRank(Number(e.target.value))}
-                        className="w-full"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                        {t('loraAlpha')}: {loraAlpha}
-                      </label>
-                      <input
-                        type="range"
-                        min="4"
-                        max="512"
-                        step="4"
-                        value={loraAlpha}
-                        onChange={(e) => setLoraAlpha(Number(e.target.value))}
-                        className="w-full"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                        {t('dropout')}: {loraDropout.toFixed(2)}
-                      </label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="0.5"
-                        step="0.05"
-                        value={loraDropout}
-                        onChange={(e) => setLoraDropout(Number(e.target.value))}
-                        className="w-full"
-                      />
-                    </div>
+                  <div className="space-y-4">
+                    <EditableSlider
+                      label={t('loraRank')}
+                      value={loraRank}
+                      min={4}
+                      max={256}
+                      step={4}
+                      onChange={setLoraRank}
+                    />
+                    <EditableSlider
+                      label={t('loraAlpha')}
+                      value={loraAlpha}
+                      min={4}
+                      max={512}
+                      step={4}
+                      onChange={setLoraAlpha}
+                    />
+                    <EditableSlider
+                      label={t('dropout')}
+                      value={loraDropout}
+                      min={0}
+                      max={0.5}
+                      step={0.05}
+                      onChange={setLoraDropout}
+                      formatDisplay={(val) => val.toFixed(2)}
+                    />
                   </div>
                 </div>
               ) : (
@@ -1305,86 +1316,95 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                   <h3 className="text-base font-semibold text-zinc-900 dark:text-white">⚙️ {t('lokrSettings')}</h3>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">{t('lokrDescription')}</p>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                        {t('linearDim')}: {lokrLinearDim}
-                      </label>
-                      <input
-                        type="range"
-                        min="4"
-                        max="256"
-                        step="4"
-                        value={lokrLinearDim}
-                        onChange={(e) => setLokrLinearDim(Number(e.target.value))}
-                        className="w-full"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                        {t('linearAlpha')}: {lokrLinearAlpha}
-                      </label>
-                      <input
-                        type="range"
-                        min="4"
-                        max="512"
-                        step="4"
-                        value={lokrLinearAlpha}
-                        onChange={(e) => setLokrLinearAlpha(Number(e.target.value))}
-                        className="w-full"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                        {t('factor')}: {lokrFactor === -1 ? t('factorAuto') : lokrFactor}
-                      </label>
-                      <input
-                        type="number"
-                        value={lokrFactor}
-                        onChange={(e) => setLokrFactor(Number(e.target.value))}
-                        className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      />
-                    </div>
+                  <div className="space-y-4">
+                    <EditableSlider
+                      label={t('linearDim')}
+                      value={lokrLinearDim}
+                      min={4}
+                      max={256}
+                      step={4}
+                      onChange={setLokrLinearDim}
+                    />
+                    <EditableSlider
+                      label={t('linearAlpha')}
+                      value={lokrLinearAlpha}
+                      min={4}
+                      max={512}
+                      step={4}
+                      onChange={setLokrLinearAlpha}
+                    />
+                    <EditableSlider
+                      label={t('factor')}
+                      value={lokrFactor}
+                      min={-1}
+                      max={32}
+                      step={1}
+                      onChange={setLokrFactor}
+                      formatDisplay={(val) => val === -1 ? t('factorAuto') : val.toString()}
+                      autoLabel={t('factorAuto')}
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    <label className="flex items-center gap-2 p-2 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={lokrDecomposeBoth}
-                        onChange={(e) => setLokrDecomposeBoth(e.target.checked)}
-                        className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
-                      />
-                      <span className="text-sm text-zinc-700 dark:text-zinc-300">{t('decomposeBoth')}</span>
+                    <label className="flex items-center gap-3 p-2.5 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 cursor-pointer group hover:border-teal-300 dark:hover:border-teal-500/40 hover:shadow-sm transition-all duration-200">
+                      <div className="relative flex-shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={lokrDecomposeBoth}
+                          onChange={(e) => setLokrDecomposeBoth(e.target.checked)}
+                          className="peer sr-only"
+                        />
+                        <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-700 dark:to-zinc-800 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-teal-500 peer-checked:to-cyan-500 peer-checked:border-teal-500 transition-all duration-200 shadow-sm" />
+                        <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('decomposeBoth')}</span>
                     </label>
-                    <label className="flex items-center gap-2 p-2 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={lokrUseTucker}
-                        onChange={(e) => setLokrUseTucker(e.target.checked)}
-                        className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
-                      />
-                      <span className="text-sm text-zinc-700 dark:text-zinc-300">{t('useTucker')}</span>
+                    <label className="flex items-center gap-3 p-2.5 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 cursor-pointer group hover:border-teal-300 dark:hover:border-teal-500/40 hover:shadow-sm transition-all duration-200">
+                      <div className="relative flex-shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={lokrUseTucker}
+                          onChange={(e) => setLokrUseTucker(e.target.checked)}
+                          className="peer sr-only"
+                        />
+                        <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-700 dark:to-zinc-800 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-teal-500 peer-checked:to-cyan-500 peer-checked:border-teal-500 transition-all duration-200 shadow-sm" />
+                        <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('useTucker')}</span>
                     </label>
-                    <label className="flex items-center gap-2 p-2 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={lokrUseScalar}
-                        onChange={(e) => setLokrUseScalar(e.target.checked)}
-                        className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
-                      />
-                      <span className="text-sm text-zinc-700 dark:text-zinc-300">{t('useScalar')}</span>
+                    <label className="flex items-center gap-3 p-2.5 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 cursor-pointer group hover:border-teal-300 dark:hover:border-teal-500/40 hover:shadow-sm transition-all duration-200">
+                      <div className="relative flex-shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={lokrUseScalar}
+                          onChange={(e) => setLokrUseScalar(e.target.checked)}
+                          className="peer sr-only"
+                        />
+                        <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-700 dark:to-zinc-800 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-teal-500 peer-checked:to-cyan-500 peer-checked:border-teal-500 transition-all duration-200 shadow-sm" />
+                        <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('useScalar')}</span>
                     </label>
-                    <label className="flex items-center gap-2 p-2 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={lokrWeightDecompose}
-                        onChange={(e) => setLokrWeightDecompose(e.target.checked)}
-                        className="w-4 h-4 text-teal-600 rounded focus:ring-teal-500"
-                      />
-                      <span className="text-sm text-zinc-700 dark:text-zinc-300">{t('weightDecompose')}</span>
+                    <label className="flex items-center gap-3 p-2.5 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 cursor-pointer group hover:border-teal-300 dark:hover:border-teal-500/40 hover:shadow-sm transition-all duration-200">
+                      <div className="relative flex-shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={lokrWeightDecompose}
+                          onChange={(e) => setLokrWeightDecompose(e.target.checked)}
+                          className="peer sr-only"
+                        />
+                        <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-700 dark:to-zinc-800 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-teal-500 peer-checked:to-cyan-500 peer-checked:border-teal-500 transition-all duration-200 shadow-sm" />
+                        <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('weightDecompose')}</span>
                     </label>
                   </div>
 
@@ -1396,7 +1416,8 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
               <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 rounded-xl p-4 space-y-4 border-2 border-orange-200 dark:border-orange-800 shadow-md">
                 <h3 className="text-base font-semibold text-zinc-900 dark:text-white">🎛️ {t('trainingParameters')}</h3>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div className="space-y-4">
+                  {/* Learning Rate - Number Input */}
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                       {t('learningRate')}
@@ -1406,96 +1427,61 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                       value={learningRate}
                       onChange={(e) => setLearningRate(Number(e.target.value))}
                       step="0.0001"
-                      className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      min="0.0001"
+                      max="0.01"
+                      className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500 font-mono"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                      {t('maxEpochs')}: {trainEpochs}
-                    </label>
-                    <input
-                      type="range"
-                      min="100"
-                      max="4000"
-                      step="100"
+                  {/* Other Parameters - 2 Column Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <EditableSlider
+                      label={t('maxEpochs')}
                       value={trainEpochs}
-                      onChange={(e) => setTrainEpochs(Number(e.target.value))}
-                      className="w-full"
+                      min={100}
+                      max={4000}
+                      step={100}
+                      onChange={setTrainEpochs}
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                      {t('batchSize')}: {trainBatchSize}
-                    </label>
-                    <input
-                      type="range"
-                      min="1"
-                      max="8"
-                      step="1"
+                    <EditableSlider
+                      label={t('batchSize')}
                       value={trainBatchSize}
-                      onChange={(e) => setTrainBatchSize(Number(e.target.value))}
-                      className="w-full"
+                      min={1}
+                      max={8}
+                      step={1}
+                      onChange={setTrainBatchSize}
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                      {t('gradientAccumulation')}: {gradientAccumulation}
-                    </label>
-                    <input
-                      type="range"
-                      min="1"
-                      max="16"
-                      step="1"
+                    <EditableSlider
+                      label={t('gradientAccumulation')}
                       value={gradientAccumulation}
-                      onChange={(e) => setGradientAccumulation(Number(e.target.value))}
-                      className="w-full"
+                      min={1}
+                      max={16}
+                      step={1}
+                      onChange={setGradientAccumulation}
                     />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                      {t('saveEvery')}: {saveEveryNEpochs} {t('epochs')}
-                    </label>
-                    <input
-                      type="range"
-                      min="50"
-                      max="1000"
-                      step="50"
+                    <EditableSlider
+                      label={`${t('saveEvery')} (${t('epochs')})`}
                       value={saveEveryNEpochs}
-                      onChange={(e) => setSaveEveryNEpochs(Number(e.target.value))}
-                      className="w-full"
+                      min={50}
+                      max={1000}
+                      step={50}
+                      onChange={setSaveEveryNEpochs}
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                      {t('shift')}: {trainingShift.toFixed(1)}
-                    </label>
-                    <input
-                      type="range"
-                      min="1"
-                      max="5"
-                      step="0.5"
+                    <EditableSlider
+                      label={t('shift')}
                       value={trainingShift}
-                      onChange={(e) => setTrainingShift(Number(e.target.value))}
-                      className="w-full"
+                      min={1}
+                      max={5}
+                      step={0.5}
+                      onChange={setTrainingShift}
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                      {t('seed')}
-                    </label>
-                    <input
-                      type="number"
+                    <EditableSlider
+                      label={t('seed')}
                       value={trainingSeed}
-                      onChange={(e) => setTrainingSeed(Number(e.target.value))}
-                      className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                      min={0}
+                      max={999999}
+                      step={1}
+                      onChange={setTrainingSeed}
                     />
                   </div>
                 </div>
@@ -1513,32 +1499,44 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                 </div>
 
                 {adapterType === 'lora' && (
-                  <div className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                    <input
-                      type="checkbox"
-                      id="useFP8"
-                      checked={useFP8}
-                      onChange={(e) => setUseFP8(e.target.checked)}
-                      className="w-4 h-4 text-purple-600 bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 rounded focus:ring-purple-500"
-                    />
-                    <label htmlFor="useFP8" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                  <label className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-200 dark:border-purple-800 cursor-pointer group hover:border-purple-300 dark:hover:border-purple-600 transition-all duration-200">
+                    <div className="relative flex-shrink-0">
+                      <input
+                        type="checkbox"
+                        id="useFP8"
+                        checked={useFP8}
+                        onChange={(e) => setUseFP8(e.target.checked)}
+                        className="peer sr-only"
+                      />
+                      <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 border-2 border-purple-200 dark:border-purple-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-purple-500 peer-checked:to-fuchsia-500 peer-checked:border-purple-500 transition-all duration-200 shadow-sm" />
+                      <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <label htmlFor="useFP8" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">
                       ⚡ {t('useFP8')} <span className="text-xs text-zinc-500 dark:text-zinc-400">({t('fp8Description')})</span>
                     </label>
-                  </div>
+                  </label>
                 )}
 
-                <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <input
-                    type="checkbox"
-                    id="gradientCheckpointing"
-                    checked={gradientCheckpointing}
-                    onChange={(e) => setGradientCheckpointing(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 rounded focus:ring-blue-500"
-                  />
-                  <label htmlFor="gradientCheckpointing" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">
+                <label className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 cursor-pointer group hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200">
+                  <div className="relative flex-shrink-0">
+                    <input
+                      type="checkbox"
+                      id="gradientCheckpointing"
+                      checked={gradientCheckpointing}
+                      onChange={(e) => setGradientCheckpointing(e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 border-2 border-blue-200 dark:border-blue-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-blue-500 peer-checked:to-sky-500 peer-checked:border-blue-500 transition-all duration-200 shadow-sm" />
+                    <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <label htmlFor="gradientCheckpointing" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">
                     {t('gradientCheckpointing')} <span className="text-xs text-zinc-500 dark:text-zinc-400">({t('gradientCheckpointingDescription')})</span>
                   </label>
-                </div>
+                </label>
               </div>
 
               {/* Training Controls */}
@@ -1706,11 +1704,14 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
         )}
       </div>
 
-      {/* Edit Sample Modal */}
+      {/* Edit Sample Modal - positioned above Player */}
       {editingSample && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 flex items-center justify-between">
+        <div 
+          className="fixed inset-x-0 bg-black/50 z-[50] flex items-end justify-center"
+          style={{ top: '64px', bottom: '96px' }}  /* Leave space for header and Player */
+        >
+          <div className="bg-white dark:bg-zinc-900 rounded-t-xl border border-zinc-200 dark:border-zinc-800 max-w-5xl w-full max-h-full overflow-hidden flex flex-col shadow-2xl m-4">
+            <div className="sticky top-0 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 p-4 flex items-center justify-between flex-shrink-0">
               <h3 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
                 <Edit2 size={20} className="text-pink-500" />
                 {t('editSample')}: {editingSample.filename}
@@ -1723,146 +1724,150 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                  {t('caption')}
-                </label>
-                <textarea
-                  value={editForm.caption}
-                  onChange={(e) => setEditForm({ ...editForm, caption: e.target.value })}
-                  rows={3}
-                  placeholder={t('musicDescription')}
-                  className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                />
-              </div>
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
 
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                  {t('genre')}
-                </label>
-                <input
-                  type="text"
-                  value={editForm.genre}
-                  onChange={(e) => setEditForm({ ...editForm, genre: e.target.value })}
-                  placeholder="pop, electronic, dance..."
-                  className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                />
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                {t('caption')}
+              </label>
+              <textarea
+                value={editForm.caption}
+                onChange={(e) => setEditForm({ ...editForm, caption: e.target.value })}
+                rows={5}
+                placeholder={t('musicDescription')}
+                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
+              />
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                  {t('promptOverride')} <span className="text-xs text-zinc-500">({t('thisSample')})</span>
-                </label>
-                <select
-                  value={editForm.prompt_override || ''}
-                  onChange={(e) => setEditForm({ ...editForm, prompt_override: e.target.value || null })}
-                  className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                >
-                  <option value="">{t('useGlobalRatio')}</option>
-                  <option value="caption">{t('caption')}</option>
-                  <option value="genre">{t('genre')}</option>
-                </select>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{t('overrideGlobalRatio')}</p>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                {t('lyrics')} <span className="text-xs text-zinc-500">({t('editableUsedForTraining')})</span>
+              </label>
+              <textarea
+                value={editForm.lyrics}
+                onChange={(e) => setEditForm({ ...editForm, lyrics: e.target.value })}
+                rows={12}
+                placeholder="[Verse 1]\nLyrics here...\n\n[Chorus]"
+                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none"
+              />
+            </div>
+          </div>
 
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                  {t('lyrics')} <span className="text-xs text-zinc-500">({t('editableUsedForTraining')})</span>
-                </label>
-                <textarea
-                  value={editForm.lyrics}
-                  onChange={(e) => setEditForm({ ...editForm, lyrics: e.target.value })}
-                  rows={5}
-                  placeholder="[Verse 1]\nLyrics here...\n\n[Chorus]"
-                  className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-pink-500"
-                />
-              </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                {t('genre')}
+              </label>
+              <input
+                type="text"
+                value={editForm.genre}
+                onChange={(e) => setEditForm({ ...editForm, genre: e.target.value })}
+                placeholder="pop, electronic..."
+                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+              />
+            </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    {t('bpm')}
-                  </label>
-                  <input
-                    type="number"
-                    value={editForm.bpm}
-                    onChange={(e) => setEditForm({ ...editForm, bpm: e.target.value })}
-                    placeholder="120"
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  />
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                {t('bpm')}
+              </label>
+              <input
+                type="number"
+                value={editForm.bpm}
+                onChange={(e) => setEditForm({ ...editForm, bpm: e.target.value })}
+                placeholder="120"
+                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+              />
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    {t('key')}
-                  </label>
-                  <input
-                    type="text"
-                    value={editForm.keyscale}
-                    onChange={(e) => setEditForm({ ...editForm, keyscale: e.target.value })}
-                    placeholder="C Major"
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  />
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                {t('key')}
+              </label>
+              <input
+                type="text"
+                value={editForm.keyscale}
+                onChange={(e) => setEditForm({ ...editForm, keyscale: e.target.value })}
+                placeholder="C Major"
+                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+              />
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    {t('timeSignature')}
-                  </label>
-                  <select
-                    value={editForm.timesignature}
-                    onChange={(e) => setEditForm({ ...editForm, timesignature: e.target.value })}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  >
-                    <option value="">n/a</option>
-                    <option value="2/4">2/4</option>
-                    <option value="3/4">3/4</option>
-                    <option value="4/4">4/4</option>
-                    <option value="6/8">6/8</option>
-                  </select>
-                </div>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                {t('timeSignature')}
+              </label>
+              <select
+                value={editForm.timesignature}
+                onChange={(e) => setEditForm({ ...editForm, timesignature: e.target.value })}
+                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+              >
+                <option value="">n/a</option>
+                <option value="2/4">2/4</option>
+                <option value="3/4">3/4</option>
+                <option value="4/4">4/4</option>
+                <option value="6/8">6/8</option>
+              </select>
+            </div>
+          </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    {t('duration')} (s)
-                  </label>
-                  <input
-                    type="number"
-                    value={editForm.duration}
-                    onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })}
-                    placeholder="30"
-                    step="0.1"
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  />
-                </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                {t('duration')} (s)
+              </label>
+              <input
+                type="number"
+                value={editForm.duration}
+                onChange={(e) => setEditForm({ ...editForm, duration: e.target.value })}
+                placeholder="30"
+                step="0.1"
+                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:2 focus:ring-pink-500"
+              />
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    {t('language')}
-                  </label>
-                  <select
-                    value={editForm.language}
-                    onChange={(e) => {
-                      const language = e.target.value;
-                      setEditForm((prev) => ({
-                        ...prev,
-                        language,
-                        is_instrumental: language && language !== 'unknown' ? false : prev.is_instrumental,
-                      }));
-                    }}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  >
-                    {VOCAL_LANGUAGE_VALUES.map(lang => (
-                      <option key={lang.value} value={lang.value}>{t(lang.key)}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                {t('language')}
+              </label>
+              <select
+                value={editForm.language}
+                onChange={(e) => {
+                  const language = e.target.value;
+                  setEditForm((prev) => ({
+                    ...prev,
+                    language,
+                    is_instrumental: language && language !== 'unknown' ? false : prev.is_instrumental,
+                  }));
+                }}
+                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+              >
+                {VOCAL_LANGUAGE_VALUES.map(lang => (
+                  <option key={lang.value} value={lang.value}>{t(lang.key)}</option>
+                ))}
+              </select>
+            </div>
 
-              <div className="flex items-center gap-2 pt-2">
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                {t('promptOverride')} <span className="text-xs text-zinc-500">({t('thisSample')})</span>
+              </label>
+              <select
+                value={editForm.prompt_override || ''}
+                onChange={(e) => setEditForm({ ...editForm, prompt_override: e.target.value || null })}
+                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+              >
+                <option value="">{t('useGlobalRatio')}</option>
+                <option value="caption">{t('caption')}</option>
+                <option value="genre">{t('genre')}</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 pt-2">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <div className="relative">
                 <input
                   type="checkbox"
                   id="instrumental-check"
@@ -1875,15 +1880,22 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = () => {
                       language: is_instrumental ? 'unknown' : prev.language,
                     }));
                   }}
-                  className="w-4 h-4 text-pink-500 bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 rounded focus:ring-pink-500"
+                  className="peer sr-only"
                 />
-                <label htmlFor="instrumental-check" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">
-                  {t('instrumental')}
-                </label>
+                <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-pink-500 peer-checked:to-rose-500 peer-checked:border-pink-500 transition-all duration-200 group-hover:border-pink-300 dark:group-hover:border-pink-500/50 shadow-sm" />
+                <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
               </div>
+              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">
+                {t('instrumental')}
+              </span>
+            </label>
+          </div>
+
             </div>
 
-            <div className="sticky bottom-0 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 p-4 flex gap-3">
+            <div className="sticky bottom-0 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 p-4 flex gap-3 flex-shrink-0">
               <button
                 onClick={() => setEditingSample(null)}
                 className="flex-1 px-4 py-2 bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-white rounded-lg hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors"

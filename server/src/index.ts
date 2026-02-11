@@ -81,6 +81,223 @@ app.use(express.json());
 // Serve static audio files
 app.use('/audio', express.static(path.join(__dirname, '../public/audio')));
 
+// Serve training dataset audio files (securely)
+app.get('/api/audio/file', async (req, res) => {
+  const filePath = req.query.path as string;
+  if (!filePath) {
+    res.status(400).json({ error: 'Path required' });
+    return;
+  }
+  
+  console.log('[Audio File] Requested path:', filePath);
+  
+  // Security: only allow access to common audio directories
+  const allowedDirs = ['datasets', 'dataset', 'audio', 'training', 'lora', 'samples'];
+  
+  // Normalize path - handle both Unix and Windows paths
+  let normalizedPath = filePath.replace(/\\/g, '/');
+  normalizedPath = path.normalize(normalizedPath);
+  
+  console.log('[Audio File] Normalized path:', normalizedPath);
+  
+  // Check if path contains any allowed directory
+  const isAllowed = allowedDirs.some(dir => 
+    normalizedPath.toLowerCase().includes('/' + dir.toLowerCase() + '/') ||
+    normalizedPath.toLowerCase().includes('\\' + dir.toLowerCase() + '\\') ||
+    normalizedPath.toLowerCase().startsWith(dir.toLowerCase() + '/') ||
+    normalizedPath.toLowerCase().startsWith(dir.toLowerCase() + '\\') ||
+    normalizedPath.toLowerCase().startsWith('./' + dir.toLowerCase())
+  );
+  
+  if (!isAllowed) {
+    console.log('[Audio File] Access denied - not in allowed directories:', normalizedPath);
+    res.status(403).json({ error: 'Access denied', path: normalizedPath });
+    return;
+  }
+  
+  // Prevent directory traversal
+  if (normalizedPath.includes('..')) {
+    res.status(403).json({ error: 'Invalid path - directory traversal detected' });
+    return;
+  }
+  
+  // Resolve to absolute path
+  let absolutePath: string;
+  const fs = await import('fs');
+  
+  // Try multiple possible base paths
+  const possiblePaths: string[] = [];
+  
+  // Handle URL encoding and special characters
+  let decodedPath = normalizedPath;
+  try {
+    // Try to decode if it's URL encoded
+    decodedPath = decodeURIComponent(normalizedPath);
+  } catch (e) {
+    // Not URL encoded or already decoded, use as is
+  }
+  
+  // Also try double decoding in case of double encoding
+  let doubleDecodedPath = decodedPath;
+  try {
+    doubleDecodedPath = decodeURIComponent(decodedPath);
+  } catch (e) {
+    // Not double encoded
+  }
+  
+  console.log('[Audio File] Original path:', filePath);
+  console.log('[Audio File] Normalized path:', normalizedPath);
+  console.log('[Audio File] Decoded path:', decodedPath);
+  console.log('[Audio File] Double decoded path:', doubleDecodedPath);
+  
+  if (path.isAbsolute(filePath)) {
+    // Already absolute path - use as-is
+    possiblePaths.push(filePath);
+    possiblePaths.push(decodedPath);
+    possiblePaths.push(doubleDecodedPath);
+  } else {
+    // Try different base directories
+    // __dirname is server/src, so:
+    // .. = server, ../.. = ace-step-ui, ../../.. = ace-step-ui parent (where datasets usually is)
+    const projectRoot = path.join(__dirname, '../..');        // ace-step-ui
+    const workspaceRoot = path.join(__dirname, '../../..');    // ace-step-ui parent (datasets location)
+    const serverRoot = path.join(__dirname, '..');            // server
+    const cwd = process.cwd();
+    
+    // Remove leading ./ if present
+    const cleanPath = normalizedPath.startsWith('./') ? normalizedPath.slice(2) : normalizedPath;
+    const cleanDecodedPath = decodedPath.startsWith('./') ? decodedPath.slice(2) : decodedPath;
+    const cleanDoubleDecodedPath = doubleDecodedPath.startsWith('./') ? doubleDecodedPath.slice(2) : doubleDecodedPath;
+    
+    // Try various combinations
+    const bases = [workspaceRoot, projectRoot, serverRoot, cwd];
+    const paths = [normalizedPath, decodedPath, doubleDecodedPath, cleanPath, cleanDecodedPath, cleanDoubleDecodedPath];
+    
+    for (const base of bases) {
+      for (const p of paths) {
+        if (p && !possiblePaths.includes(path.join(base, p))) {
+          possiblePaths.push(path.join(base, p));
+        }
+      }
+    }
+    
+    // Also try without 'datasets' prefix if it's already in the path
+    for (const cleanP of [cleanPath, cleanDecodedPath, cleanDoubleDecodedPath]) {
+      if (cleanP.includes('datasets/') || cleanP.includes('datasets\\')) {
+        const withoutDatasetsPrefix = cleanP.replace(/^datasets[/\\]/, '');
+        for (const base of bases) {
+          const p1 = path.join(base, withoutDatasetsPrefix);
+          const p2 = path.join(base, 'datasets', withoutDatasetsPrefix);
+          if (!possiblePaths.includes(p1)) possiblePaths.push(p1);
+          if (!possiblePaths.includes(p2)) possiblePaths.push(p2);
+        }
+      }
+    }
+  }
+  
+  console.log('[Audio File] Trying paths:', possiblePaths);
+  
+  // Find first existing path
+  absolutePath = possiblePaths.find(p => fs.existsSync(p)) || '';
+  
+  if (!absolutePath) {
+    console.log('[Audio File] File not found. Tried:', possiblePaths);
+    res.status(404).json({ error: 'File not found', tried: possiblePaths, original: filePath });
+    return;
+  }
+  
+  console.log('[Audio File] Found file at:', absolutePath);
+  
+  // Set proper content type for audio files
+  const ext = path.extname(absolutePath).toLowerCase();
+  const contentType: Record<string, string> = {
+    '.mp3': 'audio/mpeg',
+    '.wav': 'audio/wav',
+    '.flac': 'audio/flac',
+    '.ogg': 'audio/ogg',
+    '.m4a': 'audio/mp4',
+    '.aac': 'audio/aac',
+  };
+  if (contentType[ext]) {
+    res.setHeader('Content-Type', contentType[ext]);
+  }
+  
+  // Set CORS headers for audio streaming
+  res.setHeader('Accept-Ranges', 'bytes');
+  
+  // Send file
+  res.sendFile(absolutePath, (err) => {
+    if (err) {
+      console.error('[Audio File] Failed to send:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to send file' });
+      }
+    } else {
+      console.log('[Audio File] Successfully served:', absolutePath);
+    }
+  });
+});
+
+// Debug endpoint to check file paths
+app.get('/api/audio/debug', async (req, res) => {
+  const fs = await import('fs');
+  const path = await import('path');
+  
+  const projectRoot = path.join(__dirname, '../..');
+  const workspaceRoot = path.join(__dirname, '../../..');
+  const serverRoot = path.join(__dirname, '..');
+  const cwd = process.cwd();
+  
+  // Check if datasets directory exists in various locations
+  const checks = [
+    { name: 'workspaceRoot (ace-step-ui parent)', path: workspaceRoot },
+    { name: 'projectRoot (ace-step-ui)', path: projectRoot },
+    { name: 'serverRoot', path: serverRoot },
+    { name: 'cwd', path: cwd },
+    { name: 'datasets in workspaceRoot', path: path.join(workspaceRoot, 'datasets') },
+    { name: 'datasets in projectRoot', path: path.join(projectRoot, 'datasets') },
+    { name: 'datasets in serverRoot', path: path.join(serverRoot, 'datasets') },
+    { name: 'datasets in cwd', path: path.join(cwd, 'datasets') },
+  ];
+  
+  const results: any = {
+    workingDirectory: cwd,
+    __dirname: __dirname,
+    checks: {} as Record<string, { exists: boolean; isDirectory: boolean; contents?: string[] }>
+  };
+  
+  for (const check of checks) {
+    try {
+      const exists = fs.existsSync(check.path);
+      if (exists) {
+        const stat = fs.statSync(check.path);
+        const isDir = stat.isDirectory();
+        const contents = isDir ? fs.readdirSync(check.path).slice(0, 20) : undefined;
+        results.checks[check.name] = { exists, isDirectory: isDir, contents };
+      } else {
+        results.checks[check.name] = { exists: false, isDirectory: false };
+      }
+    } catch (e: any) {
+      results.checks[check.name] = { exists: false, isDirectory: false, error: e.message };
+    }
+  }
+  
+  // If a test path is provided, check it directly
+  const testPath = req.query.path as string;
+  if (testPath) {
+    results.testPath = {
+      original: testPath,
+      normalized: path.normalize(testPath),
+      decoded: decodeURIComponent(testPath),
+      exists: fs.existsSync(testPath),
+      existsNormalized: fs.existsSync(path.normalize(testPath)),
+      existsDecoded: fs.existsSync(decodeURIComponent(testPath)),
+    };
+  }
+  
+  res.json(results);
+});
+
 // Audio Editor (AudioMass) - needs relaxed CSP for inline scripts and external images
 app.use('/editor', (req, res, next) => {
   res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' blob: data: http://localhost:* https:; connect-src 'self' http://localhost:* https:; worker-src 'self' blob:");

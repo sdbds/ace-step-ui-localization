@@ -4,7 +4,7 @@ import { GenerationParams, Song } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
 import { generateApi } from '../services/api';
-import { MAIN_STYLES, SUB_STYLES } from '../data/genres';
+import { MAIN_STYLES, SUB_STYLES, ALL_STYLES } from '../data/genres';
 import { EditableSlider } from './EditableSlider';
 
 interface ReferenceTrack {
@@ -188,7 +188,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   const [audioCodes, setAudioCodes] = useState('');
   const [repaintingStart, setRepaintingStart] = useState(0);
   const [repaintingEnd, setRepaintingEnd] = useState(-1);
-  const [instruction, setInstruction] = useState('Fill the audio semantic mask based on the given conditions:');
+  const [instruction, setInstruction] = useState(t('instructionDefault'));
   const [audioCoverStrength, setAudioCoverStrength] = useState(1.0);
   const [taskType, setTaskType] = useState('text2music');
   const [useAdg, setUseAdg] = useState(false);
@@ -266,17 +266,89 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   };
 
   // Genre selection state (cascading)
+  // Two-level genre cascade states
+  const [showGenreDropdown, setShowGenreDropdown] = useState(false);
+  const [showSubGenreDropdown, setShowSubGenreDropdown] = useState(false);
+  const [genreSearch, setGenreSearch] = useState<string>('');
   const [selectedMainGenre, setSelectedMainGenre] = useState<string>('');
   const [selectedSubGenre, setSelectedSubGenre] = useState<string>('');
+  const genreDropdownRef = useRef<HTMLDivElement>(null);
+  const subGenreDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (genreDropdownRef.current && !genreDropdownRef.current.contains(event.target as Node)) {
+        setShowGenreDropdown(false);
+      }
+      if (subGenreDropdownRef.current && !subGenreDropdownRef.current.contains(event.target as Node)) {
+        setShowSubGenreDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Get sub-genres for a main genre (styles that contain the main genre name)
+  const getSubGenres = (mainGenre: string) => {
+    return ALL_STYLES.filter(style => 
+      style.toLowerCase().includes(mainGenre.toLowerCase()) && 
+      style.toLowerCase() !== mainGenre.toLowerCase()
+    );
+  };
+
+  // Get sub-genres count for each main genre
+  const getSubGenreCount = (mainGenre: string) => {
+    return getSubGenres(mainGenre).length;
+  };
+
+  // Other genres: ALL_STYLES 中既不是 MAIN_STYLES，也不是任何 MAIN_STYLE 的 sub-genre
+  const OTHER_GENRES = useMemo(() => {
+    const mainStylesLower = new Set(MAIN_STYLES.map(s => s.toLowerCase()));
+    
+    // 检查一个风格是否是某个 main genre 的 sub-genre
+    const isSubGenreOfAnyMain = (style: string): boolean => {
+      const styleLower = style.toLowerCase();
+      return MAIN_STYLES.some(mainGenre => {
+        const mainLower = mainGenre.toLowerCase();
+        // 风格包含主流派关键词，且不是主流派本身
+        return styleLower !== mainLower && styleLower.includes(mainLower);
+      });
+    };
+    
+    return ALL_STYLES.filter(style => {
+      const styleLower = style.toLowerCase();
+      // 不是 main style 本身
+      if (mainStylesLower.has(styleLower)) return false;
+      // 不是任何 main genre 的 sub-genre
+      if (isSubGenreOfAnyMain(style)) return false;
+      return true;
+    });
+  }, []);
 
   // Filter sub-genres based on selected main genre
   const filteredSubGenres = useMemo(() => {
     if (!selectedMainGenre) return [];
-    const mainLower = selectedMainGenre.toLowerCase().trim();
-    return SUB_STYLES.filter(style =>
-      style.toLowerCase().includes(mainLower)
-    );
+    return getSubGenres(selectedMainGenre);
   }, [selectedMainGenre]);
+
+  // Combined and sorted genres for first level dropdown
+  const combinedGenres = useMemo(() => {
+    const mainSet = new Set(MAIN_STYLES.map(s => s.toLowerCase()));
+    // Combine both lists with type indicator
+    const combined = [
+      ...MAIN_STYLES.map(g => ({ name: g, type: 'main' as const })),
+      ...OTHER_GENRES.map(g => ({ name: g, type: 'other' as const }))
+    ];
+    // Sort alphabetically by name
+    return combined.sort((a, b) => a.name.localeCompare(b.name));
+  }, []);
+
+  // Filter combined genres based on search query
+  const filteredCombinedGenres = useMemo(() => {
+    if (!genreSearch) return combinedGenres;
+    return combinedGenres.filter(g => g.name.toLowerCase().includes(genreSearch.toLowerCase()));
+  }, [genreSearch, combinedGenres]);
 
   const [isUploadingReference, setIsUploadingReference] = useState(false);
   const [isUploadingSource, setIsUploadingSource] = useState(false);
@@ -320,7 +392,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
       .filter(song => Boolean(song.audioUrl))
       .map(song => ({
         id: song.id,
-        title: song.title || 'Untitled',
+        title: song.title || t('untitled'),
         audio_url: song.audioUrl!,
         duration: song.duration,
       }));
@@ -380,11 +452,11 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   // LoRA API handlers
   const handleLoraToggle = async () => {
     if (!token) {
-      setLoraError('Please sign in to use LoRA');
+      setLoraError(t('pleaseSignInToUseLoRA'));
       return;
     }
     if (!loraPath.trim()) {
-      setLoraError('Please enter a LoRA path');
+      setLoraError(t('pleaseEnterLoRAPath'));
       return;
     }
 
@@ -443,10 +515,18 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   useEffect(() => {
     if (initialData) {
       setCustomMode(true);
-      setLyrics(initialData.song.lyrics);
       setStyle(initialData.song.style);
       setTitle(initialData.song.title);
-      setInstrumental(initialData.song.lyrics.length === 0);
+      
+      // Check if song is instrumental (empty lyrics, [Instrumental], or Instrumental)
+      const trimmedLyrics = initialData.song.lyrics?.trim() || '';
+      const isInstrumentalSong = trimmedLyrics.length === 0 || 
+        trimmedLyrics === '[Instrumental]' || 
+        trimmedLyrics === 'Instrumental';
+      
+      setInstrumental(isInstrumentalSong);
+      // Only set lyrics if not instrumental
+      setLyrics(isInstrumentalSong ? '' : initialData.song.lyrics);
 
       // Restore full generation parameters if available
       const gp = initialData.song.generationParams;
@@ -541,7 +621,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     };
   }, [isResizing]);
 
-  const refreshModels = useCallback(async (): Promise<boolean> => {
+  const refreshModels = useCallback(async (isInitial = false): Promise<boolean> => {
     try {
       const modelsRes = await fetch('/api/generate/models');
       if (modelsRes.ok) {
@@ -550,11 +630,14 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         if (models.length > 0) {
           if (!isMountedRef.current) return false;
           setFetchedModels(models);
-          // Always sync to the backend's active model
-          const active = models.find((m: any) => m.is_active);
-          if (active) {
-            setSelectedModel(active.name);
-            localStorage.setItem('ace-model', active.name);
+          // Only sync to backend's active model on initial load
+          // After that, respect user's selection
+          if (isInitial) {
+            const active = models.find((m: any) => m.is_active);
+            if (active) {
+              setSelectedModel(active.name);
+              localStorage.setItem('ace-model', active.name);
+            }
           }
           return true;
         }
@@ -586,7 +669,8 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
       // Backend can start slowly; retry silently until models are available.
       const attemptRefresh = async (attempt: number) => {
         if (cancelled) return;
-        const ok = await refreshModels();
+        // Pass true for isInitial only on first attempt
+        const ok = await refreshModels(attempt === 0);
         if (!ok) {
           const delayMs = Math.min(15000, 800 * Math.pow(1.6, attempt));
           modelsRetryTimeoutRef.current = window.setTimeout(() => { void attemptRefresh(attempt + 1); }, delayMs);
@@ -629,11 +713,12 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     void refreshLoraStatus();
   }, [refreshLoraStatus]);
 
-  // Re-fetch models after generation completes to update active model
+  // Re-fetch models after generation completes to update active model status
+  // Don't change selection, just refresh the is_active status
   const prevIsGeneratingRef = useRef(isGenerating);
   useEffect(() => {
     if (prevIsGeneratingRef.current && !isGenerating) {
-      void refreshModels();
+      void refreshModels(false);
     }
     prevIsGeneratingRef.current = isGenerating;
   }, [isGenerating, refreshModels]);
@@ -710,7 +795,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
 
   const uploadAudio = async (file: File, target: 'reference' | 'source') => {
     if (!token) {
-      setUploadError('Please sign in to upload audio.');
+      setUploadError(t('pleaseSignInToUploadAudio'));
       return;
     }
     setUploadError(null);
@@ -723,7 +808,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
       setShowAudioModal(false);
       setTempAudioUrl('');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Upload failed';
+      const message = err instanceof Error ? err.message : t('uploadFailed');
       setUploadError(message);
     } finally {
       setUploading(false);
@@ -775,12 +860,12 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         if (result.vocal_language) setVocalLanguage(result.vocal_language);
         if (target === 'style') setIsFormatCaption(true);
       } else {
-        console.error('Format failed:', result.error || result.status_message);
-        alert(result.error || result.status_message || 'Format failed. Make sure the LLM is initialized.');
+        console.error(t('formatFailed') + ':', result.error || result.status_message);
+        alert(result.error || result.status_message || t('formatFailedLLMNotInitialized'));
       }
     } catch (err) {
       console.error('Format error:', err);
-      alert('Format failed. The LLM may not be available.');
+      alert(t('formatFailedLLMNotAvailable'));
     } finally {
       if (target === 'style') {
         setIsFormattingStyle(false);
@@ -810,7 +895,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         setReferenceTracks(data.tracks || []);
       }
     } catch (err) {
-      console.error('Failed to fetch reference tracks:', err);
+        console.error(t('failedToFetchReferenceTracks'), err);
     } finally {
       setIsLoadingTracks(false);
     }
@@ -818,7 +903,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
 
   const uploadReferenceTrack = async (file: File, target?: 'reference' | 'source') => {
     if (!token) {
-      setUploadError('Please sign in to upload audio.');
+      setUploadError(t('pleaseSignInToUploadAudio'));
       return;
     }
     setUploadError(null);
@@ -835,7 +920,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
 
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.error || 'Upload failed');
+        throw new Error(err.error || t('uploadFailed'));
       }
 
       const data = await response.json();
@@ -850,7 +935,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         setShowAudioModal(false);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Upload failed';
+      const message = err instanceof Error ? err.message : t('uploadFailed');
       setUploadError(message);
     } finally {
       setIsUploadingReference(false);
@@ -869,7 +954,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         signal: controller.signal,
       });
       if (!response.ok) {
-        throw new Error('Failed to transcribe');
+        throw new Error(t('failedToTranscribe'));
       }
       const data = await response.json();
       if (data.lyrics) {
@@ -877,7 +962,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
       }
     } catch (err) {
       if (controller.signal.aborted) return;
-      console.error('Transcription failed:', err);
+        console.error(t('transcriptionFailed'), err);
     } finally {
       if (transcribeAbortRef.current === controller) {
         transcribeAbortRef.current = null;
@@ -912,7 +997,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         }
       }
     } catch (err) {
-      console.error('Failed to delete track:', err);
+        console.error(t('failedToDeleteTrack'), err);
     }
   };
 
@@ -1021,7 +1106,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   const handleGenerate = () => {
     const styleWithGender = (() => {
       if (!vocalGender) return style;
-      const genderHint = vocalGender === 'male' ? 'Male vocals' : 'Female vocals';
+      const genderHint = vocalGender === 'male' ? t('maleVocals') : t('femaleVocals');
       const trimmed = style.trim();
       return trimmed ? `${trimmed}\n${genderHint}` : genderHint;
     })();
@@ -1235,7 +1320,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                             </span>
                             {fetchedModels.find(m => m.name === model.id)?.is_preloaded && (
                               <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                                {fetchedModels.find(m => m.name === model.id)?.is_active ? '● Active' : '● Ready'}
+                                {fetchedModels.find(m => m.name === model.id)?.is_active ? t('modelActive') : t('modelReady')}
                               </span>
                             )}
                           </div>
@@ -1335,8 +1420,8 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 max={300}
                 step={5}
                 onChange={setBpm}
-                formatDisplay={(val) => val === 0 ? 'Auto' : val.toString()}
-                autoLabel="Auto"
+                formatDisplay={(val) => val === 0 ? t('auto') : val.toString()}
+                autoLabel={t('auto')}
               />
 
               {/* Key & Time Signature */}
@@ -1346,9 +1431,9 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                   <select
                     value={keyScale}
                     onChange={setKeyScale}
-                    className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
+                    className="w-full bg-white dark:bg-zinc-800/50 border border-zinc-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500 dark:focus:border-pink-500 transition-all cursor-pointer hover:border-pink-300 dark:hover:border-pink-500/50 appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%236b7280%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e')] bg-no-repeat bg-[length:1rem] bg-[right_0.5rem_center] pr-8 shadow-sm"
                   >
-                    <option value="">Auto</option>
+                    <option value="">{t('autoOption')}</option>
                     {KEY_SIGNATURES.filter(k => k).map(key => (
                       <option key={key} value={key}>{key}</option>
                     ))}
@@ -1359,9 +1444,9 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                   <select
                     value={timeSignature}
                     onChange={setTimeSignature}
-                    className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
+                    className="w-full bg-white dark:bg-zinc-800/50 border border-zinc-200 dark:border-white/10 rounded-xl px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500 dark:focus:border-pink-500 transition-all cursor-pointer hover:border-pink-300 dark:hover:border-pink-500/50 appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%236b7280%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e')] bg-no-repeat bg-[length:1rem] bg-[right_0.5rem_center] pr-8 shadow-sm"
                   >
-                    <option value="">Auto</option>
+                    <option value="">{t('autoOption')}</option>
                     {TIME_SIGNATURES.filter(t => t).map(time => (
                       <option key={time} value={time}>{time}</option>
                     ))}
@@ -1595,7 +1680,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                   </button>
                   <button
                     className={`p-1.5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded transition-colors ${isFormattingLyrics ? 'text-pink-500' : 'text-zinc-500 hover:text-black dark:hover:text-white'}`}
-                    title="AI Format - Enhance style & auto-fill parameters"
+                    title={t('aiFormatTooltip')}
                     onClick={() => handleFormat('lyrics')}
                     disabled={isFormattingLyrics || !style.trim()}
                   >
@@ -1627,7 +1712,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
             </div>
 
             {/* Style Input */}
-            <div className="bg-white dark:bg-suno-card rounded-xl border border-zinc-200 dark:border-white/5 overflow-hidden transition-colors group focus-within:border-zinc-400 dark:focus-within:border-white/20">
+            <div className="bg-white dark:bg-suno-card rounded-xl border border-zinc-200 dark:border-white/5 overflow-visible transition-colors group focus-within:border-zinc-400 dark:focus-within:border-white/20">
               <div className="flex items-center justify-between px-3 py-2.5 bg-zinc-50 dark:bg-white/5 border-b border-zinc-100 dark:border-white/5">
                 <div>
                   <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">{t('styleOfMusic')}</span>
@@ -1647,15 +1732,15 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                   >
                     <Trash2 size={14} />
                   </button>
+                  <button
+                    className={`p-1.5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded transition-colors ${isFormattingStyle ? 'text-pink-500' : 'text-zinc-500 hover:text-black dark:hover:text-white'}`}
+                    title={t('aiFormatTooltip')}
+                    onClick={() => handleFormat('style')}
+                    disabled={isFormattingStyle || !style.trim()}
+                  >
+                    {isFormattingStyle ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  </button>
                 </div>
-                <button
-                  className={`p-1.5 hover:bg-zinc-200 dark:hover:bg-white/10 rounded transition-colors ${isFormattingStyle ? 'text-pink-500' : 'text-zinc-500 hover:text-black dark:hover:text-white'}`}
-                  title="AI Format - Enhance style & auto-fill parameters"
-                  onClick={() => handleFormat('style')}
-                  disabled={isFormattingStyle || !style.trim()}
-                >
-                  {isFormattingStyle ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                </button>
               </div>
               <textarea
                 value={style}
@@ -1664,69 +1749,187 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 className="w-full h-20 bg-transparent p-3 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none resize-none"
               />
               <div className="px-3 pb-3 space-y-3">
-                {/* Cascading Genre Selector */}
-                <div className="space-y-2">
-                  {/* First Level: Main Genre */}
-                  <div className="flex gap-2">
-                    <select
-                      value={selectedMainGenre}
-                      onChange={(e) => {
-                        setSelectedMainGenre(e.target.value);
-                        setSelectedSubGenre(''); // Reset sub genre when main changes
-                        if (e.target.value) {
-                          setStyle(prev => prev ? `${prev}, ${e.target.value}` : e.target.value);
-                        }
-                      }}
-                      className="flex-1 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
+                {/* Genre Selector with Integrated Search */}
+                <div className="space-y-3">
+                  {/* Combined Genre Dropdown with Search */}
+                  <div className="relative" ref={genreDropdownRef}>
+                    <button
+                      onClick={() => setShowGenreDropdown(!showGenreDropdown)}
+                      className="w-full flex items-center justify-between bg-white dark:bg-zinc-800/50 border border-zinc-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-zinc-700 dark:text-zinc-200 hover:border-pink-300 dark:hover:border-pink-500/50 transition-all shadow-sm"
                     >
-                      <option value="">{t('mainGenre')}</option>
-                      {MAIN_STYLES.map(genre => (
-                        <option key={genre} value={genre}>{genre}</option>
-                      ))}
-                    </select>
-                    {selectedMainGenre && (
-                      <button
-                        onClick={() => {
-                          setSelectedMainGenre('');
-                          setSelectedSubGenre('');
-                        }}
-                        className="px-2 py-1.5 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
-                        title={t('cancel')}
-                      >
-                        ✕
-                      </button>
+                      <span className={selectedMainGenre || selectedSubGenre ? 'text-zinc-900 dark:text-white font-medium' : 'text-zinc-400'}>
+                        {selectedSubGenre 
+                          ? `${selectedMainGenre} › ${selectedSubGenre}`
+                          : selectedMainGenre 
+                            ? `${selectedMainGenre} ${getSubGenreCount(selectedMainGenre) > 0 ? `(${getSubGenreCount(selectedMainGenre)} ${t('subGenres')})` : ''}`
+                            : t('selectGenre')}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {(selectedMainGenre || selectedSubGenre) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedMainGenre('');
+                              setSelectedSubGenre('');
+                            }}
+                            className="p-0.5 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                            title={t('clearSelection')}
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                        <svg className={`w-4 h-4 text-zinc-400 transition-transform ${showGenreDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </button>
+
+                    {/* Dropdown Panel */}
+                    {showGenreDropdown && (
+                      <div className="absolute z-[100] w-full mt-1 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-2xl overflow-hidden" style={{ maxHeight: '500px' }}>
+                        {/* Search Input Inside Dropdown */}
+                        <div className="p-2 border-b border-zinc-100 dark:border-zinc-700">
+                          <div className="relative">
+                            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input
+                              type="text"
+                              value={genreSearch}
+                              onChange={(e) => setGenreSearch(e.target.value)}
+                              placeholder={t('searchGenre') || 'Search genres...'}
+                              className="w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-700 rounded-lg pl-8 pr-7 py-1.5 text-xs text-zinc-700 dark:text-zinc-200 focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 placeholder:text-zinc-400"
+                              autoFocus
+                            />
+                            {genreSearch && (
+                              <button
+                                onClick={() => setGenreSearch('')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Dropdown Options - Combined and Sorted */}
+                        <div className="overflow-y-auto" style={{ maxHeight: '420px' }}>
+                          {filteredCombinedGenres.length > 0 && (
+                            <div className="py-1">
+                              {filteredCombinedGenres.map(({ name, type }) => {
+                                const subCount = type === 'main' ? getSubGenreCount(name) : 0;
+                                const isSelected = selectedMainGenre === name;
+                                return (
+                                  <button
+                                    key={name}
+                                    onClick={() => {
+                                      if (type === 'main') {
+                                        setSelectedMainGenre(name);
+                                        setSelectedSubGenre('');
+                                        setStyle(prev => prev ? `${prev}, ${name}` : name);
+                                        if (subCount === 0) {
+                                          setShowGenreDropdown(false);
+                                          setGenreSearch('');
+                                        }
+                                      } else {
+                                        // Other genre - no sub genres
+                                        setStyle(prev => prev ? `${prev}, ${name}` : name);
+                                        setSelectedMainGenre('');
+                                        setSelectedSubGenre('');
+                                        setShowGenreDropdown(false);
+                                        setGenreSearch('');
+                                      }
+                                    }}
+                                    className={`w-full px-3 py-1.5 text-left text-xs flex items-center justify-between transition-colors ${
+                                      isSelected 
+                                        ? 'bg-pink-50 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300' 
+                                        : 'text-zinc-700 dark:text-zinc-300 hover:bg-pink-50 dark:hover:bg-pink-900/20 hover:text-pink-700 dark:hover:text-pink-300'
+                                    }`}
+                                  >
+                                    <span className="flex items-center gap-2">
+                                      <span className={`w-1.5 h-1.5 rounded-full ${type === 'main' ? 'bg-pink-400' : 'bg-zinc-300 dark:bg-zinc-600'}`} />
+                                      {name}
+                                    </span>
+                                    {type === 'main' && subCount > 0 && (
+                                      <span className="text-[10px] text-zinc-400 dark:text-zinc-500 bg-zinc-100 dark:bg-zinc-700 px-1.5 py-0.5 rounded-full">
+                                        {subCount}
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
 
-                  {/* Second Level: Sub Genre (only show when main genre is selected) */}
+                  {/* Sub Genre Dropdown - Custom styled for dark mode support */}
                   {selectedMainGenre && filteredSubGenres.length > 0 && (
-                    <div className="flex gap-2 pl-4 border-l-2 border-zinc-200 dark:border-white/10">
-                      <select
-                        value={selectedSubGenre}
-                        onChange={(e) => {
-                          setSelectedSubGenre(e.target.value);
-                          if (e.target.value) {
-                            setStyle(prev => prev ? `${prev}, ${e.target.value}` : e.target.value);
-                          }
-                        }}
-                        className="flex-1 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
+                    <div className="relative" ref={subGenreDropdownRef}>
+                      <button
+                        onClick={() => setShowSubGenreDropdown(!showSubGenreDropdown)}
+                        className="w-full flex items-center justify-between bg-gradient-to-r from-pink-50/80 to-purple-50/80 dark:from-pink-950/30 dark:to-purple-950/30 border border-pink-200 dark:border-pink-700/50 rounded-xl px-3 py-2 text-xs text-zinc-700 dark:text-zinc-200 hover:border-pink-300 dark:hover:border-pink-500 transition-all shadow-sm"
                       >
-                        <option value="">{t('subGenre')} ({filteredSubGenres.length})</option>
-                        {filteredSubGenres.map(genre => (
-                          <option key={genre} value={genre}>{genre}</option>
-                        ))}
-                      </select>
-                      {selectedSubGenre && (
-                        <button
-                          onClick={() => setSelectedSubGenre('')}
-                          className="px-2 py-1.5 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
-                          title={t('cancel')}
-                        >
-                          ✕
-                        </button>
+                        <span className={selectedSubGenre ? 'text-zinc-900 dark:text-white font-medium' : 'text-zinc-500 dark:text-zinc-400'}>
+                          {selectedSubGenre || `${t('selectSubGenre')} (${filteredSubGenres.length})`}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {selectedSubGenre && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedSubGenre('');
+                              }}
+                              className="p-0.5 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                              title={t('clearSelection') || 'Clear'}
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          )}
+                          <svg className={`w-4 h-4 text-zinc-400 transition-transform ${showSubGenreDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </button>
+
+                      {/* Sub Genre Dropdown Panel */}
+                      {showSubGenreDropdown && (
+                        <div className="absolute z-[100] w-full mt-1 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-2xl overflow-hidden" style={{ maxHeight: '300px' }}>
+                          <div className="overflow-y-auto" style={{ maxHeight: '300px' }}>
+                            <div className="py-1">
+                              {filteredSubGenres.map(genre => (
+                                <button
+                                  key={genre}
+                                  onClick={() => {
+                                    setSelectedSubGenre(genre);
+                                    setStyle(prev => prev ? `${prev}, ${genre}` : genre);
+                                    setShowSubGenreDropdown(false);
+                                  }}
+                                  className={`w-full px-3 py-1.5 text-left text-xs transition-colors ${
+                                    selectedSubGenre === genre
+                                      ? 'bg-pink-50 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300'
+                                      : 'text-zinc-700 dark:text-zinc-300 hover:bg-pink-50 dark:hover:bg-pink-900/20 hover:text-pink-700 dark:hover:text-pink-300'
+                                  }`}
+                                >
+                                  {genre}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
                   )}
+
+
                 </div>
                 {/* Quick Tags */}
                 <div className="flex flex-wrap gap-2">
@@ -1925,7 +2128,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 onChange={(e) => setKeyScale(e.target.value)}
                 className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
               >
-                <option value="">Auto</option>
+                <option value="">{t('autoOption')}</option>
                 {KEY_SIGNATURES.filter(k => k).map(key => (
                   <option key={key} value={key}>{key}</option>
                 ))}
@@ -1938,7 +2141,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 onChange={(e) => setTimeSignature(e.target.value)}
                 className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
               >
-                <option value="">Auto</option>
+                <option value="">{t('autoOption')}</option>
                 {TIME_SIGNATURES.filter(t => t).map(time => (
                   <option key={time} value={time}>{time}</option>
                 ))}
@@ -1984,7 +2187,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               step={1}
               onChange={setBatchSize}
               helpText={t('numberOfVariations')}
-              title="Creates multiple variations in a single run. More variations = longer total time."
+              title={t('batchSizeTooltip')}
             />
 
             {/* Bulk Generate */}
@@ -2022,7 +2225,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               step={1}
               onChange={setInferenceSteps}
               helpText={t('moreStepsBetterQuality')}
-              title="More steps usually improves quality but slows generation."
+              title={t('inferenceStepsTooltip')}
             />
 
             {/* Guidance Scale */}
@@ -2035,7 +2238,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               onChange={setGuidanceScale}
               formatDisplay={(val) => val.toFixed(1)}
               helpText={t('howCloselyFollowPrompt')}
-              title="How strongly the model follows the prompt. Higher = stricter, lower = freer."
+              title={t('guidanceScaleTooltip')}
             />
 
             {/* Audio Format & Inference Method */}
@@ -2052,7 +2255,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Deterministic is more repeatable; stochastic adds randomness.">{t('inferMethod')}</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('inferMethodTooltip')}>{t('inferMethod')}</label>
                 <select
                   value={inferMethod}
                   onChange={(e) => setInferMethod(e.target.value as 'ode' | 'sde')}
@@ -2098,7 +2301,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Dices size={14} className="text-zinc-500" />
-                  <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Fixing the seed makes results repeatable. Random is recommended for variety.">{t('seed')}</span>
+                  <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('seedTooltip')}>{t('seed')}</span>
                 </div>
                 <button
                   onClick={() => setRandomSeed(!randomSeed)}
@@ -2124,7 +2327,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
 
             {/* Thinking Toggle */}
             <div className="flex items-center justify-between py-2 border-t border-zinc-100 dark:border-white/5">
-              <span className={`text-xs font-medium ${loraLoaded ? 'text-zinc-400 dark:text-zinc-600' : 'text-zinc-600 dark:text-zinc-400'}`} title="Lets the lyric model reason about structure and metadata. Slightly slower.">{t('thinkingCot')}</span>
+              <span className={`text-xs font-medium ${loraLoaded ? 'text-zinc-400 dark:text-zinc-600' : 'text-zinc-600 dark:text-zinc-400'}`} title={t('thinkingTooltip')}>{t('thinkingCot')}</span>
               <button
                 onClick={() => !loraLoaded && setThinking(!thinking)}
                 disabled={loraLoaded}
@@ -2144,7 +2347,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               onChange={setShift}
               formatDisplay={(val) => val.toFixed(1)}
               helpText={t('timestepShiftForBase')}
-              title="Adjusts the diffusion schedule. Only affects base model."
+              title={t('shiftTooltip')}
             />
 
             {/* Divider */}
@@ -2164,7 +2367,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               <div className="flex items-center gap-2">
                 <Music2 size={16} className="text-zinc-500" />
                 <div className="flex flex-col items-start">
-                  <span title="Controls the 5Hz lyric/caption model sampling behavior.">{t('lmParameters')}</span>
+                  <span title={t('lmParametersTooltip')}>{t('lmParameters')}</span>
                   <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-normal">{t('controlLyricGeneration')}</span>
                 </div>
               </div>
@@ -2183,7 +2386,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                   onChange={(e) => setLmTemperature(Number(e.target.value))}
                   formatDisplay={(val) => val.toFixed(2)}
                   helpText={t('higherMoreRandom')}
-                  title="Higher temperature = more random word choices."
+                  title={t('lmTemperatureTooltip')}
                 />
 
                 {/* LM CFG Scale */}
@@ -2196,7 +2399,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                   onChange={setLmCfgScale}
                   formatDisplay={(val) => val.toFixed(1)}
                   helpText={t('noCfgScale')}
-                  title="How strongly the lyric model follows the prompt."
+                  title={t('lmGuidanceScaleTooltip')}
                 />
 
                 {/* LM Top-K & Top-P */}
@@ -2208,7 +2411,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                     max={100}
                     step={1}
                     onChange={setLmTopK}
-                    title="Restricts choices to the K most likely tokens. 0 disables."
+                    title={t('lmTopKTooltip')}
                   />
                   <EditableSlider
                     label={t('topP')}
@@ -2218,13 +2421,13 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                     step={0.01}
                     onChange={setLmTopP}
                     formatDisplay={(val) => val.toFixed(2)}
-                    title="Samples from the smallest set whose total probability is P."
+                    title={t('lmTopPTooltip')}
                   />
                 </div>
 
                 {/* LM Negative Prompt */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Words or ideas to steer the lyric model away from.">{t('lmNegativePrompt')}</label>
+                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('lmNegativePromptTooltip')}>{t('lmNegativePrompt')}</label>
                   <textarea
                     value={lmNegativePrompt}
                     onChange={(e) => setLmNegativePrompt(e.target.value)}
@@ -2237,11 +2440,11 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
             )}
 
             <div className="space-y-1">
-              <h4 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide" title="Controls how much the output follows the input audio.">{t('transform')}</h4>
+              <h4 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide" title={t('transformTooltip')}>{t('transform')}</h4>
               <p className="text-[11px] text-zinc-400 dark:text-zinc-500">{t('controlSourceAudio')}</p>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Advanced: precomputed audio codes for conditioning.">{t('audioCodes')}</label>
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('audioCodesTooltip')}>{t('audioCodes')}</label>
               <textarea
                 value={audioCodes}
                 onChange={(e) => setAudioCodes(e.target.value)}
@@ -2252,7 +2455,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Choose text-to-music or audio-based modes.">{t('taskType')}</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('taskTypeTooltip')}>{t('taskType')}</label>
                 <select
                   value={taskType}
                   onChange={(e) => setTaskType(e.target.value)}
@@ -2265,7 +2468,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title="How strongly the source audio shapes the result.">{t('audioCoverStrength')}</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('audioCoverStrengthTooltip')}>{t('audioCoverStrength')}</label>
                 <input
                   type="number"
                   step="0.05"
@@ -2280,7 +2483,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Start time for the region to repaint (seconds).">{t('repaintingStart')}</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('repaintingStartTooltip')}>{t('repaintingStart')}</label>
                 <input
                   type="number"
                   step="0.1"
@@ -2290,7 +2493,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title="End time for the region to repaint (seconds).">{t('repaintingEnd')}</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('repaintingEndTooltip')}>{t('repaintingEnd')}</label>
                 <input
                   type="number"
                   step="0.1"
@@ -2302,7 +2505,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Additional directives to guide generation.">{t('instruction')}</label>
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('instructionTooltip')}>{t('instruction')}</label>
               <textarea
                 value={instruction}
                 onChange={(e) => setInstruction(e.target.value)}
@@ -2316,7 +2519,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Fraction of the diffusion process to start applying guidance.">{t('cfgIntervalStart')}</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('cfgIntervalStartTooltip')}>{t('cfgIntervalStart')}</label>
                 <input
                   type="number"
                   step="0.05"
@@ -2328,7 +2531,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Fraction of the diffusion process to stop applying guidance.">{t('cfgIntervalEnd')}</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('cfgIntervalEndTooltip')}>{t('cfgIntervalEnd')}</label>
                 <input
                   type="number"
                   step="0.05"
@@ -2342,7 +2545,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Override the default timestep schedule (advanced).">{t('customTimesteps')}</label>
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('customTimestepsTooltip')}>{t('customTimesteps')}</label>
               <input
                 type="text"
                 value={customTimesteps}
@@ -2354,7 +2557,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Scales score-based guidance (advanced).">{t('scoreScale')}</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('scoreScaleTooltip')}>{t('scoreScale')}</label>
                 <input
                   type="number"
                   step="0.05"
@@ -2364,7 +2567,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Bigger chunks can be faster but use more memory.">{t('lmBatchChunkSize')}</label>
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('lmBatchChunkSizeTooltip')}>{t('lmBatchChunkSize')}</label>
                 <input
                   type="number"
                   min="1"
@@ -2400,44 +2603,44 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <label
                 className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400"
-                title="Adaptive Dual Guidance: dynamically adjusts CFG for quality. Base model only; slower."
+                title={t('useAdgTooltip')}
               >
                 <input type="checkbox" checked={useAdg} onChange={() => setUseAdg(!useAdg)} />
                 {t('useAdg')}
               </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Allow the LM to run in larger batches for speed (more VRAM).">
+              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('allowLmBatchTooltip')}>
                 <input type="checkbox" checked={allowLmBatch} onChange={() => setAllowLmBatch(!allowLmBatch)} />
                 {t('allowLmBatch')}
               </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Let the LM reason about metadata like BPM, key, duration.">
+              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('useCotMetadataTooltip')}>
                 <input type="checkbox" checked={useCotMetas} onChange={() => setUseCotMetas(!useCotMetas)} />
                 {t('useCotMetas')}
               </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Let the LM reason about the caption/style text.">
+              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('useCotCaptionTooltip')}>
                 <input type="checkbox" checked={useCotCaption} onChange={() => setUseCotCaption(!useCotCaption)} />
                 {t('useCotCaption')}
               </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Let the LM reason about language selection.">
+              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('useCotLanguageTooltip')}>
                 <input type="checkbox" checked={useCotLanguage} onChange={() => setUseCotLanguage(!useCotLanguage)} />
                 {t('useCotLanguage')}
               </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Auto-generate missing fields when possible.">
+              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('autogenHint')}>
                 <input type="checkbox" checked={autogen} onChange={() => setAutogen(!autogen)} />
                 {t('autogen')}
               </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Include debug info for constrained decoding.">
+              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('constrainedDecodingDebugTooltip')}>
                 <input type="checkbox" checked={constrainedDecodingDebug} onChange={() => setConstrainedDecodingDebug(!constrainedDecodingDebug)} />
                 {t('constrainedDecodingDebug')}
               </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Use the formatted caption produced by the AI formatter.">
+              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('formatCaptionTooltip')}>
                 <input type="checkbox" checked={isFormatCaption} onChange={() => setIsFormatCaption(!isFormatCaption)} />
                 {t('formatCaption')}
               </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Return scorer outputs for diagnostics.">
+              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('getScoresTooltip')}>
                 <input type="checkbox" checked={getScores} onChange={() => setGetScores(!getScores)} />
                 {t('getScores')}
               </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title="Return synced lyric (LRC) output when available.">
+              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('getLrcTooltip')}>
                 <input type="checkbox" checked={getLrc} onChange={() => setGetLrc(!getLrc)} />
                 {t('getLrcLyrics')}
               </label>

@@ -1,12 +1,13 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Song } from '../types';
-import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, Download, Heart, MoreVertical, Volume2, VolumeX, Maximize2, Repeat1, ChevronDown, ChevronUp } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, Download, Heart, MoreVertical, Volume2, VolumeX, Video, Maximize2, Repeat1, ChevronDown, ChevronUp, Edit3, AudioLines } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../context/ResponsiveContext';
 import { useI18n } from '../context/I18nContext';
 import { SongDropdownMenu } from './SongDropdownMenu';
 import { ShareModal } from './ShareModal';
 import { AlbumCover } from './AlbumCover';
+import { WaveformVisualizer } from './WaveformVisualizer';
 
 interface PlayerProps {
     currentSong: Song | null;
@@ -104,7 +105,7 @@ export const Player: React.FC<PlayerProps> = ({
                     <div className="w-10 h-10 lg:w-12 lg:h-12 rounded bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center">
                         <Play size={20} className="text-zinc-400 dark:text-zinc-600" />
                     </div>
-                    <span className="text-sm font-medium">Select a song to play</span>
+                    <span className="text-sm font-medium">{t('selectSongToPlay')}</span>
                 </div>
             </div>
         );
@@ -144,6 +145,25 @@ export const Player: React.FC<PlayerProps> = ({
         } catch (error) {
             console.error('Download failed:', error);
         }
+    };
+
+    const handleEditAudio = () => {
+        if (!currentSong?.audioUrl) return;
+        const audioUrl = currentSong.audioUrl.startsWith('http')
+            ? currentSong.audioUrl
+            : `${window.location.origin}${currentSong.audioUrl}`;
+        window.open(`/editor?audioUrl=${encodeURIComponent(audioUrl)}`, '_blank');
+    };
+
+    const handleExtractAudio = () => {
+        if (!currentSong?.audioUrl) return;
+        const baseUrl = window.location.port === '3000'
+            ? `${window.location.protocol}//${window.location.hostname}:3001`
+            : window.location.origin;
+        const audioUrl = currentSong.audioUrl.startsWith('http')
+            ? currentSong.audioUrl
+            : `${baseUrl}${currentSong.audioUrl}`;
+        window.open(`${baseUrl}/demucs-web/?audioUrl=${encodeURIComponent(audioUrl)}`, '_blank');
     };
 
     if (isMobile) {
@@ -257,9 +277,15 @@ export const Player: React.FC<PlayerProps> = ({
                         </button>
                     </div>
 
-                    {/* Volume Control - Vertical */}
-                    <div className="flex flex-col items-center gap-3 px-6 py-4">
-                        <div className="relative h-32 w-8 flex items-center justify-center">
+                    {/* Volume Control - Horizontal */}
+                    <div className="flex items-center gap-3 px-6 py-4 w-full max-w-[280px] mx-auto">
+                        <button
+                            onClick={() => onVolumeChange(volume === 0 ? 0.8 : 0)}
+                            className="text-zinc-400 dark:text-white/50 tap-highlight-none"
+                        >
+                            {volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                        </button>
+                        <div className="flex-1 h-1.5 bg-zinc-300 dark:bg-white/20 rounded-full relative">
                             <input
                                 type="range"
                                 min="0"
@@ -267,19 +293,19 @@ export const Player: React.FC<PlayerProps> = ({
                                 step="0.01"
                                 value={volume}
                                 onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-                                className="w-32 h-8 -rotate-90 origin-center appearance-none bg-transparent cursor-pointer"
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            />
+                            <div
+                                className="h-full bg-zinc-900 dark:bg-white rounded-full"
+                                style={{ width: `${volume * 100}%` }}
+                            />
+                            <div
+                                className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-zinc-900 dark:bg-white rounded-full shadow pointer-events-none"
                                 style={{
-                                    WebkitAppearance: 'none',
-                                    background: `linear-gradient(to right, rgb(236 72 153) 0%, rgb(236 72 153) ${volume * 100}%, rgb(228 228 231) ${volume * 100}%, rgb(228 228 231) 100%)`
+                                    left: `clamp(0px, calc(${volume * 100}% - 7px), calc(100% - 14px))`
                                 }}
                             />
                         </div>
-                        <button
-                            onClick={() => onVolumeChange(volume === 0 ? 0.8 : 0)}
-                            className="text-zinc-400 dark:text-white/50 tap-highlight-none"
-                        >
-                            {volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                        </button>
                     </div>
 
                     {/* Extra Actions */}
@@ -470,8 +496,36 @@ export const Player: React.FC<PlayerProps> = ({
                                 </div>
                             </div>
 
-                            {/* Main Controls */}
-                            <div className="flex items-center justify-center gap-8 py-2 w-full">
+                            {/* Main Controls + Speed + Volume */}
+                            <div className="flex items-center justify-center gap-5 lg:gap-7 py-2 w-full">
+                                {/* Playback Speed Dropdown */}
+                                <div className="relative hidden lg:block" ref={speedMenuRef}>
+                                    <button
+                                        className="px-2 py-1 text-[11px] font-mono font-bold text-zinc-500 dark:text-white/60 hover:bg-zinc-200 dark:hover:bg-white/10 rounded transition-colors min-w-[40px] text-center"
+                                        onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+                                    >
+                                        {playbackRate}x
+                                    </button>
+                                    {showSpeedMenu && (
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white dark:bg-zinc-800 rounded-lg shadow-xl border border-zinc-200 dark:border-white/10 py-1 min-w-[80px] z-50">
+                                            {[0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((rate) => (
+                                                <button
+                                                    key={rate}
+                                                    onClick={() => {
+                                                        onPlaybackRateChange(rate);
+                                                        setShowSpeedMenu(false);
+                                                    }}
+                                                    className={`w-full px-3 py-1.5 text-left text-xs font-mono hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors ${
+                                                        playbackRate === rate ? 'text-pink-600 dark:text-pink-500 font-bold' : 'text-zinc-700 dark:text-zinc-300'
+                                                    }`}
+                                                >
+                                                    {rate === 1.0 ? t('normalSpeed') : `${rate}x`}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
                                 <button
                                     onClick={onToggleShuffle}
                                     className={`p-2 transition-colors ${isShuffle ? 'text-pink-600 dark:text-pink-500' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
@@ -503,81 +557,78 @@ export const Player: React.FC<PlayerProps> = ({
                                     {repeatMode === 'one' ? <Repeat1 size={22} /> : <Repeat size={22} />}
                                     {repeatMode !== 'none' && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-current rounded-full"></div>}
                                 </button>
-                            </div>
 
-                            {/* Playback Speed Dropdown */}
-                            <div className="relative group hidden lg:block" ref={speedMenuRef}>
-                                <button
-                                    className="px-2 py-1 text-[11px] font-mono font-bold hover:bg-zinc-200 dark:hover:bg-white/10 rounded transition-colors min-w-[42px] text-center"
-                                    onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+                                {/* Volume Control - Hover to show vertical slider */}
+                                <div
+                                    className="relative hidden lg:block"
+                                    onMouseEnter={() => setIsHoveringVolume(true)}
+                                    onMouseLeave={() => setIsHoveringVolume(false)}
                                 >
-                                    {playbackRate}x
-                                </button>
-                                {showSpeedMenu && (
-                                    <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-zinc-800 rounded-lg shadow-xl border border-zinc-200 dark:border-white/10 py-1 min-w-[80px] z-50">
-                                        {[0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((rate) => (
-                                            <button
-                                                key={rate}
-                                                onClick={() => {
-                                                    onPlaybackRateChange(rate);
-                                                    setShowSpeedMenu(false);
-                                                }}
-                                                className={`w-full px-3 py-1.5 text-left text-xs font-mono hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors ${
-                                                    playbackRate === rate ? 'text-pink-600 dark:text-pink-500 font-bold' : 'text-zinc-700 dark:text-zinc-300'
-                                                }`}
-                                            >
-                                                {rate === 1.0 ? t('normalSpeed') : `${rate}x`}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                                    <button
+                                        onClick={() => onVolumeChange(volume === 0 ? 0.8 : 0)}
+                                        className={`p-2 transition-colors ${volume === 0 ? 'text-zinc-400' : 'text-zinc-500 dark:text-white/60 hover:text-zinc-900 dark:hover:text-white'}`}
+                                    >
+                                        {volume === 0 ? <VolumeX size={22} /> : <Volume2 size={22} />}
+                                    </button>
 
-                            {/* Volume Control */}
-                            <div className="flex items-center gap-4 w-full max-w-xs">
-                                <button
-                                    onClick={() => onVolumeChange(volume === 0 ? 0.8 : 0)}
-                                    className="text-zinc-500 dark:text-white/50 hover:text-zinc-900 dark:hover:text-white transition-colors"
-                                >
-                                    {volume === 0 ? <VolumeX size={22} /> : <Volume2 size={22} />}
-                                </button>
-                                <div className="flex-1 h-1.5 bg-zinc-300 dark:bg-white/20 rounded-full relative">
-                                    <input
-                                        type="range"
-                                        min="0"
-                                        max="1"
-                                        step="0.01"
-                                        value={volume}
-                                        onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                    />
-                                    <div
-                                        className="h-full bg-zinc-700 dark:bg-white/70 rounded-full"
-                                        style={{ width: `${volume * 100}%` }}
-                                    />
-                                    <div
-                                        className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-zinc-700 dark:bg-white/70 rounded-full shadow pointer-events-none"
-                                        style={{
-                                            left: `clamp(0px, calc(${volume * 100}% - 7px), calc(100% - 14px))`
-                                        }}
-                                    />
+                                    {/* Vertical Volume Slider - appears on hover */}
+                                    {isHoveringVolume && (
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pb-2">
+                                            <div className="bg-white dark:bg-zinc-800 rounded-lg shadow-xl border border-zinc-200 dark:border-white/10 p-2">
+                                                <div className="relative h-24 w-8 flex items-center justify-center">
+                                                    <input
+                                                        type="range"
+                                                        min="0"
+                                                        max="1"
+                                                        step="0.01"
+                                                        value={volume}
+                                                        onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+                                                        className="w-24 h-8 -rotate-90 origin-center appearance-none bg-transparent cursor-pointer"
+                                                        style={{
+                                                            WebkitAppearance: 'none',
+                                                            background: `linear-gradient(to right, rgb(236 72 153) 0%, rgb(236 72 153) ${volume * 100}%, rgb(228 228 231) ${volume * 100}%, rgb(228 228 231) 100%)`
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="text-[10px] text-center font-mono text-zinc-600 dark:text-zinc-400 mt-1">
+                                                    {Math.round(volume * 100)}%
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             {/* Extra Actions */}
-                            <div className="flex items-center justify-center gap-4 text-zinc-400 dark:text-white/50">
+                            <div className="flex items-center justify-center gap-6 lg:gap-10 text-zinc-400 dark:text-white/50">
                                 <button
                                     onClick={onToggleLike}
                                     className={`p-3 rounded-full hover:bg-zinc-200 dark:hover:bg-white/10 transition-colors ${isLiked ? 'text-pink-600 dark:text-pink-500' : ''}`}
+                                    title={t('like')}
                                 >
                                     <Heart size={22} fill={isLiked ? "currentColor" : "none"} />
+                                </button>
+                                <button
+                                    onClick={handleEditAudio}
+                                    className="p-3 rounded-full hover:bg-zinc-200 dark:hover:bg-white/10 transition-colors"
+                                    title={t('editAudio')}
+                                >
+                                    <Edit3 size={20} />
+                                </button>
+                                <button
+                                    onClick={handleExtractAudio}
+                                    className="p-3 rounded-full hover:bg-zinc-200 dark:hover:bg-white/10 transition-colors"
+                                    title={t('extractAudio')}
+                                >
+                                    <AudioLines size={20} />
                                 </button>
                                 {onOpenVideo && (
                                     <button
                                         onClick={onOpenVideo}
                                         className="p-3 rounded-full hover:bg-zinc-200 dark:hover:bg-white/10 transition-colors"
+                                        title={t('createVideo')}
                                     >
-                                        <Maximize2 size={20} />
+                                        <Video size={20} />
                                     </button>
                                 )}
                                 <button
@@ -591,6 +642,7 @@ export const Player: React.FC<PlayerProps> = ({
                                     <button
                                         onClick={() => setShowDropdown(!showDropdown)}
                                         className="p-3 rounded-full hover:bg-zinc-200 dark:hover:bg-white/10 transition-colors"
+                                        title={t('more')}
                                     >
                                         <MoreVertical size={20} />
                                     </button>
@@ -627,20 +679,28 @@ export const Player: React.FC<PlayerProps> = ({
     return (
         <div className="h-20 lg:h-24 bg-white dark:bg-black/95 backdrop-blur border-t border-zinc-200 dark:border-white/10 flex flex-col z-50 transition-colors duration-300 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] dark:shadow-none">
 
-            {/* Progress Bar */}
-            <div
+            {/* Progress Bar with Waveform Overlay */}
+            <div 
                 ref={progressBarRef}
-                className="w-full h-1 lg:h-1.5 bg-zinc-200 dark:bg-zinc-800 cursor-pointer group relative"
+                className="relative w-full h-10 lg:h-12 bg-gradient-to-b from-zinc-50 to-zinc-100 dark:from-zinc-900 dark:to-zinc-950 cursor-pointer group border-y border-zinc-200/50 dark:border-white/5"
                 onClick={(e) => handleSeekInteraction(e, progressBarRef)}
             >
-                <div
-                    className="h-full bg-zinc-900 dark:bg-white relative group-hover:bg-pink-600 dark:group-hover:bg-pink-500 transition-colors"
-                    style={{ width: `${progressPercent}%` }}
-                >
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-zinc-900 dark:bg-white group-hover:bg-pink-600 dark:group-hover:bg-pink-500 rounded-full shadow-lg -mr-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                {/* Waveform - rendered behind */}
+                <div className="absolute inset-x-0 inset-y-1 z-0">
+                    <WaveformVisualizer
+                        audioUrl={currentSong.audioUrl}
+                        currentTime={currentTime}
+                        duration={duration}
+                        progressBarRef={progressBarRef}
+                        onSeek={onSeek}
+                    />
                 </div>
-                {/* Hit area for easier clicking */}
-                <div className="absolute top-1/2 -translate-y-1/2 w-full h-4 -z-10"></div>
+                
+                {/* Playhead line - follows exact progress */}
+                <div
+                    className="absolute top-0 bottom-0 w-0.5 bg-zinc-800 dark:bg-white shadow-[0_0_6px_rgba(244,63,94,0.6)] z-20"
+                    style={{ left: `${progressPercent}%`, transform: 'translateX(-50%)' }}
+                />
             </div>
 
             <div className="flex-1 flex items-center justify-between px-2 sm:px-4 lg:px-6 gap-2 sm:gap-4">

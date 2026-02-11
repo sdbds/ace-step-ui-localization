@@ -1230,7 +1230,22 @@ function AppContent() {
       }
 
       case 'profile':
-        if (!viewingUsername) return null;
+        if (!viewingUsername) {
+          return (
+            <div className="flex flex-col items-center justify-center h-full gap-4 bg-black">
+              <div className="text-zinc-400">{t('userNotFound')}</div>
+              <button 
+                onClick={() => {
+                  setCurrentView('library');
+                  window.history.pushState({}, '', '/library');
+                }} 
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-white"
+              >
+                {t('goBack')}
+              </button>
+            </div>
+          );
+        }
         return (
           <UserProfile
             username={viewingUsername}
@@ -1246,7 +1261,23 @@ function AppContent() {
         );
 
       case 'playlist':
-        if (!viewingPlaylistId) return null;
+        if (!viewingPlaylistId) {
+          // Auto-navigate back to library if no playlist is selected
+          return (
+            <div className="flex flex-col items-center justify-center h-full gap-4 bg-black">
+              <div className="text-zinc-400">{t('playlistNotFound')}</div>
+              <button 
+                onClick={() => {
+                  setCurrentView('library');
+                  window.history.pushState({}, '', '/library');
+                }} 
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-white"
+              >
+                {t('goBack')}
+              </button>
+            </div>
+          );
+        }
         return (
           <PlaylistDetail
             playlistId={viewingPlaylistId}
@@ -1261,7 +1292,22 @@ function AppContent() {
         );
 
       case 'song':
-        if (!viewingSongId) return null;
+        if (!viewingSongId) {
+          return (
+            <div className="flex flex-col items-center justify-center h-full gap-4 bg-black">
+              <div className="text-zinc-400">{t('songNotFound')}</div>
+              <button 
+                onClick={() => {
+                  setCurrentView('library');
+                  window.history.pushState({}, '', '/library');
+                }} 
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-white"
+              >
+                {t('goBack')}
+              </button>
+            </div>
+          );
+        }
         return (
           <SongProfile
             songId={viewingSongId}
@@ -1289,17 +1335,53 @@ function AppContent() {
         );
 
       case 'training':
-        return <TrainingPanel />;
+        return (
+          <TrainingPanel
+            onPlaySample={(audioPath: string, title: string) => {
+              // Convert dataset audio path to playable URL
+              // Audio paths from dataset can be relative (./datasets/...) or absolute paths
+              const apiBase = import.meta.env.VITE_API_URL || window.location.origin;
+              let audioUrl: string;
+              
+              if (audioPath.startsWith('http')) {
+                // Already a full URL
+                audioUrl = audioPath;
+              } else if (audioPath.startsWith('/audio/')) {
+                // Standard audio directory path
+                audioUrl = `${apiBase}${audioPath}`;
+              } else {
+                // Dataset file path - use the secure file endpoint
+                audioUrl = `${apiBase}/api/audio/file?path=${encodeURIComponent(audioPath)}`;
+              }
+              
+              console.log('[Training] Playing sample:', { title, audioPath, audioUrl });
+              
+              const tempSong: Song = {
+                id: `training-sample-${Date.now()}`,
+                title: title,
+                creator: 'Training Sample',
+                audioUrl: audioUrl,
+                lyrics: '',
+                style: '',
+                duration: 30,
+                createdAt: new Date().toISOString(),
+                isPrivate: true,
+              };
+              
+              // Set as current song and play
+              setCurrentSong(tempSong);
+              setIsPlaying(true);
+              setShowRightSidebar(false);
+            }}
+          />
+        );
 
       case 'create':
       default:
         return (
-          <div className="flex h-full overflow-hidden relative w-full">
+          <div className="flex h-full overflow-hidden relative w-full bg-zinc-50 dark:bg-suno-panel">
             {/* Create Panel */}
-            <div className={`
-              ${mobileShowList ? 'hidden md:block' : 'w-full'}
-              md:w-[320px] lg:w-[360px] flex-shrink-0 h-full border-r border-zinc-200 dark:border-white/5 bg-zinc-50 dark:bg-suno-panel relative z-10 transition-colors duration-300
-            `}>
+            <div className="w-full md:w-[320px] lg:w-[360px] flex-shrink-0 h-full border-r border-zinc-200 dark:border-white/5 relative z-10">
               <CreatePanel
                 onGenerate={handleGenerate}
                 isGenerating={isGenerating}
@@ -1311,10 +1393,7 @@ function AppContent() {
             </div>
 
             {/* Song List */}
-            <div className={`
-              ${!mobileShowList ? 'hidden md:flex' : 'flex'}
-              flex-1 flex-col h-full overflow-hidden bg-white dark:bg-suno-DEFAULT transition-colors duration-300
-            `}>
+            <div className="hidden md:flex flex-1 flex-col h-full overflow-hidden bg-white dark:bg-suno-DEFAULT">
               <SongList
                 songs={songs}
                 currentSong={currentSong}
@@ -1345,7 +1424,7 @@ function AppContent() {
 
             {/* Right Sidebar */}
             {showRightSidebar && (
-              <div className="hidden xl:block w-[360px] flex-shrink-0 h-full bg-zinc-50 dark:bg-suno-panel relative z-10 border-l border-zinc-200 dark:border-white/5 transition-colors duration-300">
+              <div className="hidden xl:block w-[360px] flex-shrink-0 h-full bg-zinc-50 dark:bg-suno-panel relative z-10 border-l border-zinc-200 dark:border-white/5">
                 <RightSidebar
                   song={selectedSong}
                   onClose={() => setShowRightSidebar(false)}
@@ -1360,17 +1439,6 @@ function AppContent() {
                 />
               </div>
             )}
-
-            {/* Mobile Toggle Button */}
-            <div className="md:hidden absolute top-4 right-4 z-50">
-              <button
-                onClick={() => setMobileShowList(!mobileShowList)}
-                className="bg-zinc-800 text-white px-4 py-2 rounded-full shadow-lg border border-white/10 flex items-center gap-2 text-sm font-bold"
-              >
-                {mobileShowList ? t('createSong') : t('viewList')}
-                <List size={16} />
-              </button>
-            </div>
           </div>
         );
     }
@@ -1382,6 +1450,16 @@ function AppContent() {
         <Sidebar
           currentView={currentView}
           onNavigate={(v) => {
+            // Clear viewing states when navigating away from detail pages
+            if (v !== 'playlist') {
+              setViewingPlaylistId(null);
+            }
+            if (v !== 'profile') {
+              setViewingUsername(null);
+            }
+            if (v !== 'song') {
+              setViewingSongId(null);
+            }
             setCurrentView(v);
             if (v === 'create') {
               setMobileShowList(false);

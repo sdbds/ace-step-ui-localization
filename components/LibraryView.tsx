@@ -85,7 +85,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     onClick={() => setActiveTab('all')}
                     className={`pb-3 text-sm font-bold transition-colors relative ${activeTab === 'all' ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}
                  >
-                    All Songs
+                    {t('allSongs')}
                     {activeTab === 'all' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500 rounded-full"></div>}
                  </button>
                  <button 
@@ -106,7 +106,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     onClick={() => setActiveTab('uploads')}
                     className={`pb-3 text-sm font-bold transition-colors relative ${activeTab === 'uploads' ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}
                  >
-                    Uploads
+                    {t('uploads')}
                     {activeTab === 'uploads' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500 rounded-full"></div>}
                  </button>
              </div>
@@ -251,7 +251,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
              {activeTab === 'uploads' && (
                  <div className="space-y-2">
                     {referenceTracks.length === 0 ? (
-                        <div className="text-sm text-zinc-500 dark:text-zinc-400">No uploads yet.</div>
+                        <div className="text-sm text-zinc-500 dark:text-zinc-400">{t('noUploadsYet')}</div>
                     ) : (
                         referenceTracks.map((track) => (
                             <div key={track.id} className="flex items-center gap-4 p-3 rounded-lg border border-zinc-200 dark:border-white/5 bg-white dark:bg-zinc-900/40">
@@ -267,7 +267,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                                 <button
                                     className="p-2 rounded-full hover:bg-zinc-200 dark:hover:bg-white/5 text-zinc-500 hover:text-red-600 transition-colors"
                                     onClick={() => onDeleteReferenceTrack?.(track.id)}
-                                    title="Delete upload"
+                                    title={t('deleteUpload')}
                                 >
                                     <Trash2 size={16} />
                                 </button>

@@ -4,6 +4,7 @@ import { X, Play, Pause, Download, Wand2, Image as ImageIcon, Music, Video, Load
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 import { useResponsive } from '../context/ResponsiveContext';
+import { useI18n } from '../context/I18nContext';
 
 interface VideoGeneratorModalProps {
   isOpen: boolean;
@@ -103,6 +104,7 @@ function ColumnsIcon() {
 
 export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen, onClose, song }) => {
   const { isMobile } = useResponsive();
+  const { t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const animationRef = useRef<number>(0);
@@ -1664,7 +1666,7 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
   const addTextLayer = () => {
       const newLayer: TextLayer = {
           id: Date.now().toString(),
-          text: 'New Text',
+          text: t('newText'),
           x: 50,
           y: 50,
           size: 40,
@@ -1701,7 +1703,7 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
             <div className="absolute top-0 left-0 right-0 z-10 p-3 bg-gradient-to-b from-black/80 to-transparent">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <Video className="text-pink-500" size={18} />
-                Video Studio
+                {t('videoStudio')}
               </h2>
             </div>
 
@@ -1735,19 +1737,19 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
               <div className="p-6 border-b border-white/5">
                   <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
                       <Video className="text-pink-500" size={20} />
-                      Video Studio
+                      {t('videoStudio')}
                   </h2>
-                  <p className="text-zinc-500 text-xs">Create professional visualizers.</p>
+                  <p className="text-zinc-500 text-xs">{t('createProfessionalVisualizers')}</p>
               </div>
             )}
 
             {/* Tabs */}
             <div className="flex border-b border-white/5">
                 {[
-                    { id: 'presets', label: 'Presets', icon: <Grid size={14} /> },
-                    { id: 'style', label: 'Style', icon: <Palette size={14} /> },
-                    { id: 'text', label: 'Text', icon: <Type size={14} /> },
-                    { id: 'effects', label: 'FX', icon: <Zap size={14} /> }
+                    { id: 'presets', label: t('presets'), icon: <Grid size={14} /> },
+                    { id: 'style', label: t('style'), icon: <Palette size={14} /> },
+                    { id: 'text', label: t('text'), icon: <Type size={14} /> },
+                    { id: 'effects', label: t('fx'), icon: <Zap size={14} /> }
                 ].map(tab => (
                     <button 
                         key={tab.id}
@@ -1786,7 +1788,7 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                          {/* Background */}
                          <div className="space-y-3">
                             <label className="text-xs font-bold text-zinc-500 uppercase flex justify-between">
-                                Background
+                                {t('background')}
                             </label>
                             <div className="bg-black/20 p-3 rounded-lg border border-white/5 space-y-3">
                                 {/* Type Selection */}
@@ -1795,19 +1797,19 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                                         onClick={() => { setBackgroundType('random'); setBackgroundSeed(Date.now()); }}
                                         className={`py-2 rounded text-xs font-bold flex items-center justify-center gap-1 ${backgroundType === 'random' ? 'bg-pink-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}
                                      >
-                                         <Wand2 size={12}/> Random
+                                         <Wand2 size={12}/> {t('random')}
                                      </button>
                                      <button
                                         onClick={() => setBackgroundType('custom')}
                                         className={`py-2 rounded text-xs font-bold flex items-center justify-center gap-1 ${backgroundType === 'custom' ? 'bg-pink-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}
                                      >
-                                         <ImageIcon size={12}/> Image
+                                         <ImageIcon size={12}/> {t('image')}
                                      </button>
                                      <button
                                         onClick={() => setBackgroundType('video')}
                                         className={`py-2 rounded text-xs font-bold flex items-center justify-center gap-1 ${backgroundType === 'video' ? 'bg-pink-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}
                                      >
-                                         <Video size={12}/> Video
+                                         <Video size={12}/> {t('videoType')}
                                      </button>
                                 </div>
 
@@ -1819,7 +1821,7 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                                                 onClick={() => fileInputRef.current?.click()}
                                                 className="py-2 px-3 bg-zinc-700 hover:bg-zinc-600 rounded text-xs text-white flex items-center justify-center gap-1"
                                             >
-                                                <Upload size={12}/> Upload
+                                                <Upload size={12}/> {t('upload')}
                                             </button>
                                             <button
                                                 onClick={() => openPexelsBrowser('background', 'photos')}
@@ -1844,7 +1846,7 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                                                 onClick={() => videoFileInputRef.current?.click()}
                                                 className="py-2 px-3 bg-zinc-700 hover:bg-zinc-600 rounded text-xs text-white flex items-center justify-center gap-1"
                                             >
-                                                <Upload size={12}/> Upload
+                                                <Upload size={12}/> {t('upload')}
                                             </button>
                                             <button
                                                 onClick={() => openPexelsBrowser('background', 'videos')}
@@ -1855,13 +1857,13 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                                         </div>
                                         <input
                                             type="text"
-                                            placeholder="Or paste video URL..."
+                                            placeholder={t('pasteVideoUrl')}
                                             value={videoUrl}
                                             onChange={(e) => setVideoUrl(e.target.value)}
                                             className="w-full bg-zinc-800 rounded px-3 py-2 text-xs text-white border border-white/10 placeholder-zinc-500"
                                         />
                                         {videoUrl && (
-                                            <p className="text-[10px] text-emerald-400 truncate">✓ Video loaded</p>
+                                            <p className="text-[10px] text-emerald-400 truncate">✓ {t('videoLoaded')}</p>
                                         )}
                                     </div>
                                 )}
@@ -1884,7 +1886,7 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
 
                                 <div>
                                     <div className="flex justify-between text-sm text-zinc-300 mb-2">
-                                        <span>Dimming</span>
+                                        <span>{t('dimming')}</span>
                                         <span>{Math.round(config.bgDim * 100)}%</span>
                                     </div>
                                     <input
@@ -1899,7 +1901,7 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
 
                          {/* Colors */}
                          <div className="space-y-3">
-                             <label className="text-xs font-bold text-zinc-500 uppercase">Color Presets</label>
+                             <label className="text-xs font-bold text-zinc-500 uppercase">{t('colorPresets')}</label>
                              <div className="grid grid-cols-5 gap-2">
                                  {[
                                      { name: 'Neon Pink', primary: '#ec4899', secondary: '#8b5cf6' },
@@ -1933,17 +1935,17 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                          </div>
 
                          <div className="space-y-3">
-                             <label className="text-xs font-bold text-zinc-500 uppercase">Custom Colors</label>
+                             <label className="text-xs font-bold text-zinc-500 uppercase">{t('customColors')}</label>
                              <div className="grid grid-cols-2 gap-4">
                                  <div>
-                                     <span className="text-[10px] text-zinc-400 mb-1 block">Primary</span>
+                                     <span className="text-[10px] text-zinc-400 mb-1 block">{t('primary')}</span>
                                      <div className="flex items-center gap-2 bg-black/20 p-2 rounded border border-white/5">
                                          <input type="color" value={config.primaryColor} onChange={(e) => setConfig({...config, primaryColor: e.target.value})} className="w-6 h-6 rounded cursor-pointer border-none bg-transparent" />
                                          <span className="text-xs text-zinc-300 font-mono">{config.primaryColor}</span>
                                      </div>
                                  </div>
                                  <div>
-                                     <span className="text-[10px] text-zinc-400 mb-1 block">Secondary</span>
+                                     <span className="text-[10px] text-zinc-400 mb-1 block">{t('secondary')}</span>
                                       <div className="flex items-center gap-2 bg-black/20 p-2 rounded border border-white/5">
                                          <input type="color" value={config.secondaryColor} onChange={(e) => setConfig({...config, secondaryColor: e.target.value})} className="w-6 h-6 rounded cursor-pointer border-none bg-transparent" />
                                          <span className="text-xs text-zinc-300 font-mono">{config.secondaryColor}</span>
@@ -1955,7 +1957,7 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                          {/* Particles */}
                          <div className="space-y-3">
                             <div className="flex justify-between text-xs font-bold text-zinc-500 uppercase">
-                                <span>Particles</span>
+                                <span>{t('particles')}</span>
                                 <span>{config.particleCount}</span>
                             </div>
                             <input
@@ -1968,7 +1970,7 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
 
                         {/* Center Image (Album Art) */}
                         <div className="space-y-3">
-                            <label className="text-xs font-bold text-zinc-500 uppercase">Center Image</label>
+                            <label className="text-xs font-bold text-zinc-500 uppercase">{t('centerImage')}</label>
                             <div className="bg-black/20 p-3 rounded-lg border border-white/5 space-y-3">
                                 <div className="flex items-center gap-3">
                                     {/* Preview */}
@@ -1999,7 +2001,7 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                                                 onClick={() => setCustomAlbumArt(null)}
                                                 className="w-full py-1 text-[10px] text-zinc-500 hover:text-red-400"
                                             >
-                                                Reset to default
+                                                {t('resetToDefault')}
                                             </button>
                                         )}
                                     </div>
@@ -2023,14 +2025,14 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                             onClick={addTextLayer}
                             className="w-full py-2 bg-pink-600 text-white rounded-lg flex items-center justify-center gap-2 text-xs font-bold hover:bg-pink-700"
                         >
-                            <Plus size={14} /> Add Text Layer
+                            <Plus size={14} /> {t('addTextLayer')}
                         </button>
                         
                         <div className="space-y-3">
                             {textLayers.map((layer, index) => (
                                 <div key={layer.id} className="bg-black/20 p-3 rounded-lg border border-white/5 space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs font-bold text-zinc-500">Layer {index + 1}</span>
+                                        <span className="text-xs font-bold text-zinc-500">{t('layer')} {index + 1}</span>
                                         <button onClick={() => removeTextLayer(layer.id)} className="text-zinc-500 hover:text-red-500">
                                             <Trash2 size={14} />
                                         </button>
@@ -2040,25 +2042,25 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                                         value={layer.text} 
                                         onChange={(e) => updateTextLayer(layer.id, { text: e.target.value })}
                                         className="w-full bg-zinc-800 rounded px-2 py-1 text-xs text-white border border-white/5"
-                                        placeholder="Text content"
+                                        placeholder={t('textContent')}
                                     />
                                     <div className="grid grid-cols-2 gap-2">
                                         <div>
-                                            <label className="text-[10px] text-zinc-500 block mb-1">X Position</label>
+                                            <label className="text-[10px] text-zinc-500 block mb-1">{t('xPosition')}</label>
                                             <input type="range" min="0" max="100" value={layer.x} onChange={(e) => updateTextLayer(layer.id, { x: parseInt(e.target.value) })} className="w-full accent-pink-500 h-1 bg-zinc-700 rounded-lg appearance-none" />
                                         </div>
                                         <div>
-                                            <label className="text-[10px] text-zinc-500 block mb-1">Y Position</label>
+                                            <label className="text-[10px] text-zinc-500 block mb-1">{t('yPosition')}</label>
                                             <input type="range" min="0" max="100" value={layer.y} onChange={(e) => updateTextLayer(layer.id, { y: parseInt(e.target.value) })} className="w-full accent-pink-500 h-1 bg-zinc-700 rounded-lg appearance-none" />
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
                                         <div className="flex-1">
-                                            <label className="text-[10px] text-zinc-500 block mb-1">Size</label>
+                                            <label className="text-[10px] text-zinc-500 block mb-1">{t('size')}</label>
                                             <input type="number" value={layer.size} onChange={(e) => updateTextLayer(layer.id, { size: parseInt(e.target.value) })} className="w-full bg-zinc-800 rounded px-2 py-1 text-xs text-white border border-white/5" />
                                         </div>
                                         <div>
-                                            <label className="text-[10px] text-zinc-500 block mb-1">Color</label>
+                                            <label className="text-[10px] text-zinc-500 block mb-1">{t('color')}</label>
                                             <input type="color" value={layer.color} onChange={(e) => updateTextLayer(layer.id, { color: e.target.value })} className="w-8 h-6 rounded cursor-pointer border-none bg-transparent" />
                                         </div>
                                     </div>
@@ -2072,19 +2074,19 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                 {activeTab === 'effects' && (
                     <div className="space-y-2">
                         {[
-                            { id: 'shake', label: 'Bass Shake', desc: 'Camera reacts to low freq', icon: <Activity size={16}/> },
-                            { id: 'glitch', label: 'Digital Glitch', desc: 'Random artifacting', icon: <Zap size={16}/> },
-                            { id: 'vhs', label: 'VHS Tape', desc: 'Color bleeding & noise', icon: <Disc size={16}/> },
-                            { id: 'cctv', label: 'CCTV Mode', desc: 'Night vision style', icon: <Monitor size={16}/> },
-                            { id: 'scanlines', label: 'Scanlines', desc: 'Old monitor effect', icon: <Grid size={16}/> },
-                            { id: 'chromatic', label: 'Aberration', desc: 'RGB Split', icon: <Layers size={16}/> },
-                            { id: 'bloom', label: 'Bloom', desc: 'Glow on bright areas', icon: <Sun size={16}/> },
-                            { id: 'filmGrain', label: 'Film Grain', desc: 'Cinematic noise', icon: <Film size={16}/> },
-                            { id: 'pixelate', label: 'Pixelate', desc: 'Retro pixel look', icon: <Grid size={16}/> },
-                            { id: 'strobe', label: 'Strobe', desc: 'Flash on bass hits', icon: <Zap size={16}/> },
-                            { id: 'vignette', label: 'Vignette', desc: 'Dark edges', icon: <Circle size={16}/> },
-                            { id: 'hueShift', label: 'Hue Shift', desc: 'Color rotation', icon: <Palette size={16}/> },
-                            { id: 'letterbox', label: 'Letterbox', desc: 'Cinematic bars', icon: <Minus size={16}/> },
+                            { id: 'shake', label: t('bassShake'), desc: t('bassShakeDesc'), icon: <Activity size={16}/> },
+                            { id: 'glitch', label: t('digitalGlitch'), desc: t('digitalGlitchDesc'), icon: <Zap size={16}/> },
+                            { id: 'vhs', label: t('vhsTape'), desc: t('vhsTapeDesc'), icon: <Disc size={16}/> },
+                            { id: 'cctv', label: t('cctvMode'), desc: t('cctvModeDesc'), icon: <Monitor size={16}/> },
+                            { id: 'scanlines', label: t('scanlines'), desc: t('scanlinesDesc'), icon: <Grid size={16}/> },
+                            { id: 'chromatic', label: t('aberration'), desc: t('aberrationDesc'), icon: <Layers size={16}/> },
+                            { id: 'bloom', label: t('bloom'), desc: t('bloomDesc'), icon: <Sun size={16}/> },
+                            { id: 'filmGrain', label: t('filmGrain'), desc: t('filmGrainDesc'), icon: <Film size={16}/> },
+                            { id: 'pixelate', label: t('pixelate'), desc: t('pixelateDesc'), icon: <Grid size={16}/> },
+                            { id: 'strobe', label: t('strobe'), desc: t('strobeDesc'), icon: <Zap size={16}/> },
+                            { id: 'vignette', label: t('vignette'), desc: t('vignetteDesc'), icon: <Circle size={16}/> },
+                            { id: 'hueShift', label: t('hueShift'), desc: t('hueShiftDesc'), icon: <Palette size={16}/> },
+                            { id: 'letterbox', label: t('letterbox'), desc: t('letterboxDesc'), icon: <Minus size={16}/> },
                         ].map((effect) => {
                              const effectId = effect.id as keyof EffectConfig;
                              const isActive = effects[effectId];
@@ -2112,7 +2114,7 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                                     {isActive && (
                                         <div className="px-3 pb-3 pt-0 animate-in fade-in slide-in-from-top-2">
                                             <div className="flex justify-between text-[10px] text-zinc-400 mb-1">
-                                                <span>Intensity</span>
+                                                <span>{t('intensity')}</span>
                                                 <span>{Math.round(intensity * 100)}%</span>
                                             </div>
                                             <input 
@@ -2137,7 +2139,7 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                      <div className="w-full bg-zinc-800 rounded-xl h-12 flex items-center justify-center px-4">
                          <div className="flex items-center gap-2 text-white font-bold text-sm">
                              <Loader2 className="animate-spin" size={18} />
-                             Loading video encoder...
+                             {t('loadingVideoEncoder')}
                          </div>
                      </div>
                  ) : isExporting ? (
@@ -2150,12 +2152,12 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                              {exportStage === 'capturing' ? (
                                <>
                                  <Loader2 className="animate-spin text-pink-400" size={16} />
-                                 Rendering frames {Math.round(exportProgress)}%
+                                 {t('renderingFrames')} {Math.round(exportProgress)}%
                                </>
                              ) : (
                                <>
                                  <Loader2 className="animate-spin text-blue-400" size={16} />
-                                 {exportProgress < 95 ? 'Encoding (be patient)...' : `Encoding MP4 ${Math.round(exportProgress)}%`}
+                                 {exportProgress < 95 ? t('encodingBePatient') : `${t('encodingMP4')} ${Math.round(exportProgress)}%`}
                                </>
                              )}
                          </div>
@@ -2167,11 +2169,11 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                         className="w-full h-12 bg-white text-black font-bold rounded-xl flex items-center justify-center gap-2 hover:scale-105 transition-transform disabled:opacity-50"
                     >
                         <Download size={18} />
-                        Render Video (MP4)
+                        {t('renderVideoMP4')}
                     </button>
                  )}
                  <p className="text-[10px] text-zinc-600 text-center">
-                   {ffmpegLoaded ? 'Encoder ready • ' : ''}Offline rendering - faster than real-time.
+                   {ffmpegLoaded ? `${t('encoderReady')} • ` : ''}{t('offlineRendering')}
                  </p>
             </div>
         </div>
@@ -2213,10 +2215,10 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                 </div>
                 <div>
                   <h3 className="text-white font-bold">
-                    {pexelsTarget === 'albumArt' ? 'Select Center Image' : 'Select Background'}
+                    {pexelsTarget === 'albumArt' ? t('selectCenterImage') : t('selectBackground')}
                   </h3>
                   <p className="text-zinc-500 text-xs">
-                    {pexelsTarget === 'albumArt' ? 'Choose an image for the center circle' : 'Free stock photos & videos'}
+                    {pexelsTarget === 'albumArt' ? t('chooseImageForCenter') : t('freeStockPhotos')}
                   </p>
                 </div>
               </div>
@@ -2224,7 +2226,7 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                 <button
                   onClick={() => setShowPexelsApiKeyInput(!showPexelsApiKeyInput)}
                   className={`p-2 hover:bg-white/10 rounded-lg ${pexelsApiKey ? 'text-emerald-400' : 'text-amber-400'}`}
-                  title={pexelsApiKey ? 'API key configured' : 'Set API key'}
+                  title={pexelsApiKey ? t('apiKeyConfigured') : t('setApiKey')}
                 >
                   <Settings2 size={20} />
                 </button>
@@ -2238,14 +2240,14 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
             {showPexelsApiKeyInput && (
               <div className="p-4 bg-zinc-800/50 border-b border-white/10 space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-zinc-300">Pexels API Key</label>
+                  <label className="text-sm font-medium text-zinc-300">{t('pexelsApiKey')}</label>
                   <a
                     href="https://www.pexels.com/api/new/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-emerald-400 hover:underline flex items-center gap-1"
                   >
-                    Get free API key <ExternalLink size={10} />
+                    {t('getFreeApiKey')} <ExternalLink size={10} />
                   </a>
                 </div>
                 <div className="flex gap-2">
@@ -2253,14 +2255,14 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                     type="password"
                     value={pexelsApiKey}
                     onChange={(e) => setPexelsApiKey(e.target.value)}
-                    placeholder="Enter your Pexels API key..."
+                    placeholder={t('enterPexelsApiKey')}
                     className="flex-1 bg-zinc-900 rounded-lg px-4 py-2 text-sm text-white border border-white/10 placeholder-zinc-500"
                   />
                   <button
                     onClick={() => savePexelsApiKey(pexelsApiKey)}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-white font-bold text-sm"
                   >
-                    Save
+                    {t('saveApiKey')}
                   </button>
                 </div>
                 <p className="text-xs text-zinc-500">Your API key is stored locally in your browser.</p>
@@ -2276,7 +2278,7 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                     onClick={() => setShowPexelsApiKeyInput(true)}
                     className="text-red-300 underline hover:text-red-200"
                   >
-                    Set API key
+                    {t('setApiKey')}
                   </button>
                 )}
               </div>
@@ -2290,13 +2292,13 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                   onClick={() => { setPexelsTab('photos'); searchPexels(pexelsQuery, 'photos'); }}
                   className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${pexelsTab === 'photos' ? 'bg-emerald-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}
                 >
-                  <ImageIcon size={14} /> Photos
+                  <ImageIcon size={14} /> {t('photos')}
                 </button>
                 <button
                   onClick={() => { setPexelsTab('videos'); searchPexels(pexelsQuery, 'videos'); }}
                   className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${pexelsTab === 'videos' ? 'bg-emerald-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}
                 >
-                  <Video size={14} /> Videos
+                  <Video size={14} /> {t('videos')}
                 </button>
               </div>
               )}
@@ -2306,7 +2308,7 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                   value={pexelsQuery}
                   onChange={(e) => setPexelsQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && searchPexels(pexelsQuery, pexelsTab)}
-                  placeholder="Search for backgrounds..."
+                  placeholder={t('searchForBackgrounds')}
                   className="flex-1 bg-zinc-800 rounded-lg px-4 py-2 text-sm text-white border border-white/10 placeholder-zinc-500"
                 />
                 <button
@@ -2315,7 +2317,7 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-white font-bold text-sm flex items-center gap-2 disabled:opacity-50"
                 >
                   {pexelsLoading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
-                  Search
+                  {t('search')}
                 </button>
               </div>
               {/* Quick Tags */}
@@ -2348,10 +2350,10 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                     >
                       <img src={photo.src.large} alt="" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="text-white text-xs font-bold bg-emerald-600 px-3 py-1 rounded-full">Select</span>
+                        <span className="text-white text-xs font-bold bg-emerald-600 px-3 py-1 rounded-full">{t('select')}</span>
                       </div>
                       <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                        <p className="text-[10px] text-zinc-300 truncate">by {photo.photographer}</p>
+                        <p className="text-[10px] text-zinc-300 truncate">{t('by')} {photo.photographer}</p>
                       </div>
                     </button>
                   ))}
@@ -2366,13 +2368,13 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
                     >
                       <img src={video.image} alt="" className="w-full h-full object-cover" />
                       <div className="absolute top-2 right-2 bg-black/60 px-2 py-0.5 rounded text-[10px] text-white font-bold">
-                        <Video size={10} className="inline mr-1" />VIDEO
+                        <Video size={10} className="inline mr-1" />{t('videoLabel').toUpperCase()}
                       </div>
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="text-white text-xs font-bold bg-emerald-600 px-3 py-1 rounded-full">Select</span>
+                        <span className="text-white text-xs font-bold bg-emerald-600 px-3 py-1 rounded-full">{t('select')}</span>
                       </div>
                       <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                        <p className="text-[10px] text-zinc-300 truncate">by {video.user.name}</p>
+                        <p className="text-[10px] text-zinc-300 truncate">{t('by')} {video.user.name}</p>
                       </div>
                     </button>
                   ))}
@@ -2380,17 +2382,23 @@ export const VideoGeneratorModal: React.FC<VideoGeneratorModalProps> = ({ isOpen
               )}
 
               {!pexelsLoading && pexelsPhotos.length === 0 && pexelsTab === 'photos' && (
-                <p className="text-center text-zinc-500 py-8">No photos found. Try a different search term.</p>
+                <p className="text-center text-zinc-500 py-8">{t('noPhotosFound')}</p>
               )}
               {!pexelsLoading && pexelsVideos.length === 0 && pexelsTab === 'videos' && (
-                <p className="text-center text-zinc-500 py-8">No videos found. Try a different search term.</p>
+                <p className="text-center text-zinc-500 py-8">{t('noVideosFound')}</p>
               )}
             </div>
 
             {/* Footer */}
             <div className="p-3 border-t border-white/10 bg-zinc-800/50">
               <p className="text-[10px] text-zinc-500 text-center">
-                Photos and videos provided by <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">Pexels</a>. Free for commercial use.
+                <>{t('pexelsAttribution').includes('Pexels') ? (
+                  <>
+                    {t('pexelsAttribution').split('Pexels')[0]}
+                    <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">Pexels</a>
+                    {t('pexelsAttribution').split('Pexels')[1]}
+                  </>
+                ) : t('pexelsAttribution')}</>
               </p>
             </div>
           </div>

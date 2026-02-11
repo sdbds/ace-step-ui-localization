@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Song } from '../types';
-import { Heart, Share2, Play, Pause, MoreHorizontal, X, Copy, Wand2, MoreVertical, Download, Repeat, Video, Music, Link as LinkIcon, Sparkles, Globe, Lock, Trash2, Edit3, Layers } from 'lucide-react';
+import { Heart, Share2, Play, Pause, MoreHorizontal, X, Copy, Wand2, MoreVertical, Download, Repeat, Video, Music, Link as LinkIcon, Sparkles, Globe, Lock, Trash2, Edit3, Layers, Activity, Zap, Settings2, Hash, Clock, Gauge, Radio, Disc, Volume2, SlidersHorizontal, Cpu, Terminal, Music2, Mic2, AudioWaveform } from 'lucide-react';
 import { songsApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
@@ -289,13 +289,14 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpe
                     </div>
 
                     {/* Main Actions */}
-                    <div className="flex items-center justify-between px-3 py-2.5 bg-zinc-200/80 dark:bg-black/40 backdrop-blur-sm rounded-2xl border border-zinc-300/50 dark:border-white/5">
+                    <div className="flex items-center justify-between px-2 py-2 bg-gradient-to-r from-zinc-100 to-zinc-50 dark:from-white/5 dark:to-white/[0.02] backdrop-blur-sm rounded-2xl border border-zinc-200 dark:border-white/10 shadow-sm">
                         <button
                             onClick={onOpenVideo}
                             title={t('createVideo')}
-                            className="p-3 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-300/50 dark:hover:bg-white/10 rounded-xl transition-all duration-200"
+                            className="group flex flex-col items-center gap-1 p-2.5 text-zinc-500 hover:text-rose-600 dark:text-zinc-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-all duration-200"
                         >
-                            <Video size={18} strokeWidth={1.5} />
+                            <Video size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
+                            <span className="text-[9px] font-medium">Video</span>
                         </button>
                         <button
                             onClick={() => {
@@ -304,16 +305,18 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpe
                                 window.open(`/editor?audioUrl=${encodeURIComponent(audioUrl)}`, '_blank');
                             }}
                             title={t('openInEditor')}
-                            className="p-3 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-300/50 dark:hover:bg-white/10 rounded-xl transition-all duration-200"
+                            className="group flex flex-col items-center gap-1 p-2.5 text-zinc-500 hover:text-amber-600 dark:text-zinc-400 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-all duration-200"
                         >
-                            <Edit3 size={18} strokeWidth={1.5} />
+                            <Edit3 size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
+                            <span className="text-[9px] font-medium">Editor</span>
                         </button>
                         <button
                             onClick={() => onReuse && onReuse(song)}
                             title={t('reusePrompt')}
-                            className="p-3 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-300/50 dark:hover:bg-white/10 rounded-xl transition-all duration-200"
+                            className="group flex flex-col items-center gap-1 p-2.5 text-zinc-500 hover:text-emerald-600 dark:text-zinc-400 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-all duration-200"
                         >
-                            <Repeat size={18} strokeWidth={1.5} />
+                            <Repeat size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
+                            <span className="text-[9px] font-medium">Reuse</span>
                         </button>
                         <button
                             onClick={() => {
@@ -325,27 +328,34 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpe
                                 window.open(`${baseUrl}/demucs-web/?audioUrl=${encodeURIComponent(audioUrl)}`, '_blank');
                             }}
                             title={t('extractStems')}
-                            className="p-3 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-300/50 dark:hover:bg-white/10 rounded-xl transition-all duration-200"
+                            className="group flex flex-col items-center gap-1 p-2.5 text-zinc-500 hover:text-violet-600 dark:text-zinc-400 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10 rounded-xl transition-all duration-200"
                         >
-                            <Layers size={18} strokeWidth={1.5} />
+                            <Layers size={18} strokeWidth={1.5} className="group-hover:scale-110 transition-transform" />
+                            <span className="text-[9px] font-medium">Stems</span>
                         </button>
                     </div>
 
                     {/* Icon Actions Row */}
-                    <div className="flex items-center justify-between px-2 py-2">
-                        <div className="flex items-center gap-6">
+                    <div className="flex items-center justify-center px-4 py-3 bg-gradient-to-r from-zinc-50/80 to-zinc-100/80 dark:from-white/[0.03] dark:to-white/[0.05] backdrop-blur-sm rounded-2xl border border-zinc-200/60 dark:border-white/10">
+                        <div className="flex items-center gap-4">
                             <ActionButton
-                                icon={<Heart size={22} fill={isLiked ? 'currentColor' : 'none'} />}
+                                icon={<Heart size={20} fill={isLiked ? 'currentColor' : 'none'} />}
                                 label={String(song.likeCount || 0)}
                                 active={isLiked}
                                 onClick={() => onToggleLike?.(song.id)}
+                                variant="pink"
                             />
-                            <ActionButton icon={<Share2 size={22} />} onClick={() => setShareModalOpen(true)} />
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
-                                title={t('downloadAudio')}
+                            <div className="w-px h-6 bg-zinc-200 dark:bg-white/10" />
+                            <ActionButton
+                                icon={<Share2 size={20} />}
+                                label={t('share')}
+                                onClick={() => setShareModalOpen(true)}
+                                variant="blue"
+                            />
+                            <div className="w-px h-6 bg-zinc-200 dark:bg-white/10" />
+                            <ActionButton
+                                icon={<Download size={20} />}
+                                label={t('download')}
                                 onClick={async () => {
                                     if (!song.audioUrl) return;
                                     try {
@@ -363,89 +373,94 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpe
                                         console.error('Download failed:', error);
                                     }
                                 }}
-                            >
-                                <Download size={20} />
-                            </button>
+                                variant="emerald"
+                            />
                         </div>
                     </div>
 
                     {(song.generationParams?.referenceAudioUrl || song.generationParams?.sourceAudioUrl) && (
                         <div className="space-y-3">
-                            <div className="flex items-center gap-2 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
-                                <LinkIcon size={14} />
-                                Sources
+                            <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20 dark:from-cyan-400/20 dark:to-blue-400/20 border border-cyan-200 dark:border-cyan-500/30 flex items-center justify-center">
+                                    <LinkIcon size={14} className="text-cyan-600 dark:text-cyan-400" />
+                                </div>
+                                <h3 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">{t('sources')}</h3>
                             </div>
                             <div className="space-y-2">
                                 {song.generationParams?.referenceAudioUrl && (
-                                    <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/40 px-3 py-2">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <Music size={14} className="text-zinc-400" />
+                                    <div className="group flex items-center justify-between gap-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-gradient-to-r from-white to-zinc-50 dark:from-zinc-900/60 dark:to-black/40 px-3 py-2.5 hover:border-cyan-300 dark:hover:border-cyan-500/40 hover:shadow-md transition-all duration-200">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-100 to-blue-100 dark:from-cyan-500/20 dark:to-blue-500/20 flex items-center justify-center flex-shrink-0">
+                                                <Music size={14} className="text-cyan-600 dark:text-cyan-400" />
+                                            </div>
                                             <div className="min-w-0">
-                                                <div className="text-xs text-zinc-500">Reference</div>
-                                                <div className="text-sm font-medium text-zinc-900 dark:text-white truncate">
+                                                <div className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">{t('referenceAudio')}</div>
+                                                <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">
                                                     {song.generationParams?.referenceAudioTitle || getSourceLabel(song.generationParams?.referenceAudioUrl)}
                                                 </div>
                                             </div>
                                         </div>
-                                            <button
-                                                className="text-xs px-2 py-1 rounded-full border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors"
-                                                onClick={() => {
-                                                    if (!song.generationParams?.referenceAudioUrl || !onPlay) return;
-                                                    const previewSong = {
-                                                        id: `ref_${song.id}`,
-                                                        title: song.generationParams?.referenceAudioTitle || getSourceLabel(song.generationParams?.referenceAudioUrl),
-                                                        lyrics: '',
-                                                        style: 'Reference',
-                                                        coverUrl: song.coverUrl,
-                                                        duration: '0:00',
-                                                        createdAt: new Date(),
-                                                        tags: [],
-                                                        audioUrl: song.generationParams?.referenceAudioUrl,
-                                                        isPublic: false,
-                                                        userId: song.userId,
-                                                        creator: song.creator,
-                                                    };
-                                                    onPlay(previewSong);
-                                                }}
-                                            >
-                                                Play
-                                            </button>
+                                        <button
+                                            className="flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-600 hover:to-blue-600 shadow-sm hover:shadow-md hover:scale-105 transition-all duration-200"
+                                            onClick={() => {
+                                                if (!song.generationParams?.referenceAudioUrl || !onPlay) return;
+                                                const previewSong = {
+                                                    id: `ref_${song.id}`,
+                                                    title: song.generationParams?.referenceAudioTitle || getSourceLabel(song.generationParams?.referenceAudioUrl),
+                                                    lyrics: '',
+                                                    style: 'Reference',
+                                                    coverUrl: song.coverUrl,
+                                                    duration: '0:00',
+                                                    createdAt: new Date(),
+                                                    tags: [],
+                                                    audioUrl: song.generationParams?.referenceAudioUrl,
+                                                    isPublic: false,
+                                                    userId: song.userId,
+                                                    creator: song.creator,
+                                                };
+                                                onPlay(previewSong);
+                                            }}
+                                        >
+                                            Play
+                                        </button>
                                     </div>
                                 )}
                                 {song.generationParams?.sourceAudioUrl && (
-                                    <div className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-900/40 px-3 py-2">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <Layers size={14} className="text-zinc-400" />
+                                    <div className="group flex items-center justify-between gap-3 rounded-xl border border-zinc-200 dark:border-white/10 bg-gradient-to-r from-white to-zinc-50 dark:from-zinc-900/60 dark:to-black/40 px-3 py-2.5 hover:border-violet-300 dark:hover:border-violet-500/40 hover:shadow-md transition-all duration-200">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-500/20 dark:to-purple-500/20 flex items-center justify-center flex-shrink-0">
+                                                <Layers size={14} className="text-violet-600 dark:text-violet-400" />
+                                            </div>
                                             <div className="min-w-0">
-                                                <div className="text-xs text-zinc-500">Cover</div>
-                                                <div className="text-sm font-medium text-zinc-900 dark:text-white truncate">
+                                                <div className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider">{t('coverAudio')}</div>
+                                                <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">
                                                     {song.generationParams?.sourceAudioTitle || getSourceLabel(song.generationParams?.sourceAudioUrl)}
                                                 </div>
                                             </div>
                                         </div>
-                                            <button
-                                                className="text-xs px-2 py-1 rounded-full border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors"
-                                                onClick={() => {
-                                                    if (!song.generationParams?.sourceAudioUrl || !onPlay) return;
-                                                    const previewSong = {
-                                                        id: `cover_${song.id}`,
-                                                        title: song.generationParams?.sourceAudioTitle || getSourceLabel(song.generationParams?.sourceAudioUrl),
-                                                        lyrics: '',
-                                                        style: 'Cover',
-                                                        coverUrl: song.coverUrl,
-                                                        duration: '0:00',
-                                                        createdAt: new Date(),
-                                                        tags: [],
-                                                        audioUrl: song.generationParams?.sourceAudioUrl,
-                                                        isPublic: false,
-                                                        userId: song.userId,
-                                                        creator: song.creator,
-                                                    };
-                                                    onPlay(previewSong);
-                                                }}
-                                            >
-                                                Play
-                                            </button>
+                                        <button
+                                            className="flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-full bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600 shadow-sm hover:shadow-md hover:scale-105 transition-all duration-200"
+                                            onClick={() => {
+                                                if (!song.generationParams?.sourceAudioUrl || !onPlay) return;
+                                                const previewSong = {
+                                                    id: `cover_${song.id}`,
+                                                    title: song.generationParams?.sourceAudioTitle || getSourceLabel(song.generationParams?.sourceAudioUrl),
+                                                    lyrics: '',
+                                                    style: 'Cover',
+                                                    coverUrl: song.coverUrl,
+                                                    duration: '0:00',
+                                                    createdAt: new Date(),
+                                                    tags: [],
+                                                    audioUrl: song.generationParams?.sourceAudioUrl,
+                                                    isPublic: false,
+                                                    userId: song.userId,
+                                                    creator: song.creator,
+                                                };
+                                                onPlay(previewSong);
+                                            }}
+                                        >
+                                            Play
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -455,9 +470,14 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpe
                     <div className="h-px bg-zinc-200 dark:bg-white/5 w-full"></div>
 
                     {/* Tags / Style */}
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wide">{t('songDetails')}</h2>
+                            <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-pink-500/20 to-rose-500/20 dark:from-pink-400/20 dark:to-rose-400/20 border border-pink-200 dark:border-pink-500/30 flex items-center justify-center">
+                                    <Sparkles size={14} className="text-pink-600 dark:text-pink-400" />
+                                </div>
+                                <h2 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">{t('songDetails')}</h2>
+                            </div>
                             <button
                                 onClick={async (e) => {
                                     e.stopPropagation();
@@ -473,41 +493,67 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpe
                                         console.error('Failed to copy style tags:', error);
                                     }
                                 }}
-                                className={`relative z-10 flex items-center gap-1 text-[10px] font-medium transition-colors cursor-pointer ${copiedStyle ? 'text-green-500' : 'text-zinc-500 hover:text-black dark:hover:text-white'}`}
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all duration-200 cursor-pointer ${copiedStyle ? 'bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400' : 'bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-white/15 hover:text-zinc-900 dark:hover:text-white'}`}
                                 title={t('copyAllTags')}
                             >
-                                <Copy size={12} /> {copiedStyle ? t('copied') : t('copy')}
+                                <Copy size={11} /> 
+                                {copiedStyle ? t('copied') : t('copy')}
                             </button>
                         </div>
                         <div
-                            onClick={() => setTagsExpanded(!tagsExpanded)}
-                            className={`flex flex-wrap gap-1.5 cursor-pointer relative ${!tagsExpanded ? 'max-h-[22px] overflow-hidden' : ''}`}
+                            className={`flex flex-wrap gap-2 relative ${!tagsExpanded ? 'max-h-[28px] overflow-hidden' : ''}`}
                         >
-                            {Array.isArray(song.tags) && song.tags.length > 0 ? (
-                                song.tags.map(tag => (
-                                    <span key={tag} className="px-2 py-0.5 bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 border border-zinc-200 dark:border-white/10 rounded text-[11px] font-medium text-zinc-600 dark:text-zinc-300 transition-colors">
-                                        {tag}
-                                    </span>
-                                ))
-                            ) : (
-                                song.style.split(',').map((tag, idx) => (
-                                    <span key={idx} className="px-2 py-0.5 bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10 border border-zinc-200 dark:border-white/10 rounded text-[11px] font-medium text-zinc-600 dark:text-zinc-300 transition-colors">
-                                        {tag.trim()}
-                                    </span>
-                                ))
-                            )}
-                            {!tagsExpanded && (
-                                <span className="absolute right-0 top-0 px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-[11px] font-medium text-zinc-600 dark:text-zinc-300 pointer-events-none">
-                                    +{t('more')}
+                            {(Array.isArray(song.tags) && song.tags.length > 0
+                                ? song.tags.filter(tag => tag && tag.trim())
+                                : song.style.split(',').filter(tag => tag && tag.trim())
+                            ).map((tag, idx) => (
+                                <span
+                                    key={idx}
+                                    onClick={async (e) => {
+                                        e.stopPropagation();
+                                        try {
+                                            await navigator.clipboard.writeText(tag.trim());
+                                            setCopiedStyle(true);
+                                            setTimeout(() => setCopiedStyle(false), 2000);
+                                        } catch (error) {
+                                            console.error('Failed to copy tag:', error);
+                                        }
+                                    }}
+                                    className="px-3 py-1.5 bg-gradient-to-r from-zinc-100 to-zinc-50 dark:from-white/10 dark:to-white/5 hover:from-pink-50 hover:to-rose-50 dark:hover:from-pink-500/20 dark:hover:to-rose-500/20 border border-zinc-200 dark:border-white/10 hover:border-pink-300 dark:hover:border-pink-500/40 rounded-lg text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 hover:text-pink-700 dark:hover:text-pink-300 transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer"
+                                    style={{ animationDelay: `${idx * 50}ms` }}
+                                    title={t('copy')}
+                                >
+                                    {tag.trim()}
                                 </span>
+                            ))}
+                            {!tagsExpanded && (
+                                <button
+                                    onClick={() => setTagsExpanded(true)}
+                                    className="absolute right-0 top-0 px-3 py-1.5 bg-gradient-to-r from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-600 hover:from-zinc-300 hover:to-zinc-400 dark:hover:from-zinc-600 dark:hover:to-zinc-500 rounded-lg text-[11px] font-bold text-zinc-700 dark:text-zinc-200 shadow-sm border border-zinc-300 dark:border-white/10 transition-all duration-200"
+                                >
+                                    +{t('more')}
+                                </button>
+                            )}
+                            {tagsExpanded && (
+                                <button
+                                    onClick={() => setTagsExpanded(false)}
+                                    className="px-3 py-1.5 bg-gradient-to-r from-zinc-200 to-zinc-300 dark:from-zinc-700 dark:to-zinc-600 hover:from-zinc-300 hover:to-zinc-400 dark:hover:from-zinc-600 dark:hover:to-zinc-500 rounded-lg text-[11px] font-bold text-zinc-700 dark:text-zinc-200 shadow-sm border border-zinc-300 dark:border-white/10 transition-all duration-200"
+                                >
+                                    {t('collapse')}
+                                </button>
                             )}
                         </div>
                     </div>
 
                     {/* Lyrics Section */}
-                    <div className="bg-white dark:bg-black/20 rounded-xl border border-zinc-200 dark:border-white/5 overflow-hidden">
-                        <div className="px-4 py-3 border-b border-zinc-100 dark:border-white/5 flex items-center justify-between bg-zinc-50 dark:bg-white/5">
-                            <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2 flex items-center justify-between">{t('lyricsSection')}</h3>
+                    <div className="bg-gradient-to-b from-white to-zinc-50/50 dark:from-black/30 dark:to-black/10 rounded-2xl border border-zinc-200 dark:border-white/10 overflow-hidden shadow-sm">
+                        <div className="px-4 py-3.5 border-b border-zinc-200 dark:border-white/10 flex items-center justify-between bg-gradient-to-r from-zinc-50 to-zinc-100/50 dark:from-white/5 dark:to-transparent">
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-500/20 to-yellow-500/20 dark:from-amber-400/20 dark:to-yellow-400/20 border border-amber-200 dark:border-amber-500/30 flex items-center justify-center">
+                                    <Mic2 size={12} className="text-amber-600 dark:text-amber-400" />
+                                </div>
+                                <h3 className="text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">{t('lyricsSection')}</h3>
+                            </div>
                             <button
                                 onClick={async (e) => {
                                     e.stopPropagation();
@@ -521,130 +567,328 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpe
                                         console.error('Failed to copy lyrics:', error);
                                     }
                                 }}
-                                className={`flex items-center gap-1 text-[10px] font-medium transition-colors cursor-pointer ${copiedLyrics ? 'text-green-500' : 'text-zinc-500 hover:text-black dark:hover:text-white'}`}
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all duration-200 cursor-pointer ${copiedLyrics ? 'bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400' : 'bg-white dark:bg-white/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/15 hover:text-zinc-900 dark:hover:text-white border border-zinc-200 dark:border-white/10'}`}
                             >
-                                <Copy size={12} /> {copiedLyrics ? t('copied') : t('copy')}
+                                <Copy size={11} /> 
+                                {copiedLyrics ? t('copied') : t('copy')}
                             </button>
                         </div>
-                        <div className="p-4 max-h-[300px] overflow-y-auto custom-scrollbar">
-                            <div className="text-sm text-zinc-700 dark:text-zinc-300 font-mono whitespace-pre-wrap leading-relaxed opacity-90">
-                                {song.lyrics || <div className="text-zinc-400 dark:text-zinc-600 italic text-center py-8">Instrumental<br /><span className="text-xs not-italic">No lyrics generated</span></div>}
+                        <div className="p-4 max-h-[280px] overflow-y-auto custom-scrollbar">
+                            <div className="text-[13px] text-zinc-700 dark:text-zinc-300 leading-relaxed opacity-95">
+                                {song.lyrics ? (
+                                    <div className="space-y-3">
+                                        {song.lyrics.split('\n').map((line, idx) => (
+                                            line.trim() === '' ? (
+                                                <div key={idx} className="h-2" />
+                                            ) : (
+                                                <p key={idx} className="text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
+                                                    {line}
+                                                </p>
+                                            )
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                                        <div className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-white/5 flex items-center justify-center mb-3">
+                                            <Music2 size={20} className="text-zinc-400 dark:text-zinc-600" />
+                                        </div>
+                                        <div className="text-zinc-500 dark:text-zinc-500 font-medium">{t('instrumentalTrack')}</div>
+                                        <div className="text-zinc-400 dark:text-zinc-600 text-xs mt-1">{t('noLyricsGenerated')}</div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
 
                     {/* Generation Parameters Metadata */}
                     {song.generationParams && (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
+                            {/* Section Header */}
                             <div className="flex items-center justify-between">
-                                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
-                                    <Sparkles size={12} />
-                                    {t('generationParameters')}
-                                </h3>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 dark:from-indigo-400/20 dark:to-purple-400/20 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-center">
+                                        <SlidersHorizontal size={14} className="text-indigo-600 dark:text-indigo-400" />
+                                    </div>
+                                    <h3 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">
+                                        {t('generationParameters')}
+                                    </h3>
+                                </div>
                                 <button
                                     onClick={() => setGenParamsExpanded(v => !v)}
-                                    className="text-[10px] font-medium text-zinc-500 hover:text-black dark:hover:text-white transition-colors"
+                                    className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-white/15 hover:text-zinc-900 dark:hover:text-white transition-all duration-200"
                                 >
                                     {genParamsExpanded ? t('less') : t('more')}
                                 </button>
                             </div>
-                            <div className="grid grid-cols-2 gap-1.5">
+
+                            {/* Parameters Grid */}
+                            <div className="grid grid-cols-2 gap-2">
                                 {(() => {
                                     const gp = song.generationParams;
-                                    const items: { label: string; value: string }[] = [];
-                                    const moreItems: { label: string; value: string }[] = [];
+                                    const coreItems: { label: string; value: string; icon: React.ReactNode; gradient: string; }[] = [];
+                                    const moreItems: { label: string; value: string; icon: React.ReactNode; gradient: string; }[] = [];
+
+                                    // Helper to get gradient based on param type
+                                    const getGradient = (type: string) => {
+                                        const gradients: Record<string, string> = {
+                                            model: 'from-blue-500/10 to-cyan-500/10 border-blue-200 dark:border-blue-500/30 text-blue-600 dark:text-blue-400',
+                                            audio: 'from-emerald-500/10 to-teal-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400',
+                                            timing: 'from-amber-500/10 to-orange-500/10 border-amber-200 dark:border-amber-500/30 text-amber-600 dark:text-amber-400',
+                                            music: 'from-rose-500/10 to-pink-500/10 border-rose-200 dark:border-rose-500/30 text-rose-600 dark:text-rose-400',
+                                            settings: 'from-violet-500/10 to-purple-500/10 border-violet-200 dark:border-violet-500/30 text-violet-600 dark:text-violet-400',
+                                            tech: 'from-slate-500/10 to-zinc-500/10 border-slate-200 dark:border-slate-500/30 text-slate-600 dark:text-slate-400',
+                                        };
+                                        return gradients[type] || gradients.settings;
+                                    };
+
+                                    // Helper to get model short name (remove 'acestep-' prefix)
+                                    const getModelShortName = (modelId: string): string => {
+                                        return modelId.replace(/^acestep-/, '');
+                                    };
 
                                     if (gp.ditModel || song.ditModel) {
-                                        items.push({ label: t('metaModel'), value: gp.ditModel || song.ditModel });
+                                        const modelId = gp.ditModel || song.ditModel || '';
+                                        coreItems.push({ 
+                                            label: t('metaModel'), 
+                                            value: getModelShortName(modelId),
+                                            icon: <Cpu size={12} />,
+                                            gradient: getGradient('model')
+                                        });
+                                    }
+                                    if (gp.lmModel) {
+                                        coreItems.push({ 
+                                            label: t('metaLmModel'), 
+                                            value: getModelShortName(gp.lmModel),
+                                            icon: <Terminal size={12} />,
+                                            gradient: getGradient('model')
+                                        });
+                                    }
+                                    if (gp.genres && gp.genres !== 'N/A') {
+                                        coreItems.push({ 
+                                            label: t('metaGenres'), 
+                                            value: gp.genres,
+                                            icon: <Music2 size={12} />,
+                                            gradient: getGradient('music')
+                                        });
                                     }
                                     if (gp.bpm && gp.bpm > 0) {
-                                        items.push({ label: t('metaBpm'), value: String(gp.bpm) });
+                                        coreItems.push({ 
+                                            label: t('metaBpm'), 
+                                            value: String(gp.bpm),
+                                            icon: <Activity size={12} />,
+                                            gradient: getGradient('timing')
+                                        });
                                     }
                                     if (gp.keyScale) {
-                                        items.push({ label: t('metaKey'), value: gp.keyScale });
+                                        coreItems.push({ 
+                                            label: t('metaKey'), 
+                                            value: gp.keyScale,
+                                            icon: <AudioWaveform size={12} />,
+                                            gradient: getGradient('music')
+                                        });
                                     }
                                     if (gp.timeSignature) {
-                                        items.push({ label: t('metaTimeSignature'), value: String(gp.timeSignature) });
+                                        coreItems.push({ 
+                                            label: t('metaTimeSignature'), 
+                                            value: String(gp.timeSignature),
+                                            icon: <Clock size={12} />,
+                                            gradient: getGradient('timing')
+                                        });
                                     }
                                     if (gp.duration != null && gp.duration > 0) {
                                         const mins = Math.floor(gp.duration / 60);
                                         const secs = gp.duration % 60;
-                                        items.push({ label: t('metaDuration'), value: mins > 0 ? `${mins}m${secs}s` : `${secs}s` });
-                                    }
-                                    if (gp.inferenceSteps) {
-                                        items.push({ label: t('metaInferenceSteps'), value: String(gp.inferenceSteps) });
-                                    }
-                                    if (gp.guidanceScale != null) {
-                                        items.push({ label: t('metaCfg'), value: String(gp.guidanceScale) });
-                                    }
-                                    if (gp.seedText != null && String(gp.seedText).length > 0) {
-                                        items.push({ label: t('metaSeed'), value: String(gp.seedText) });
-                                    } else if (gp.seed != null && String(gp.seed).length > 0) {
-                                        items.push({ label: t('metaSeed'), value: String(gp.seed) });
-                                    }
-                                    if (gp.inferMethod) {
-                                        items.push({ label: t('metaInferMethod'), value: gp.inferMethod.toUpperCase() });
-                                    }
-                                    if (gp.shift != null) {
-                                        items.push({ label: t('metaShift'), value: String(gp.shift) });
+                                        coreItems.push({ 
+                                            label: t('metaDuration'), 
+                                            value: mins > 0 ? `${mins}m ${secs}s` : `${secs}s`,
+                                            icon: <Disc size={12} />,
+                                            gradient: getGradient('audio')
+                                        });
                                     }
                                     if (gp.audioFormat) {
-                                        items.push({ label: t('metaAudioFormat'), value: gp.audioFormat.toUpperCase() });
+                                        coreItems.push({ 
+                                            label: t('metaAudioFormat'), 
+                                            value: gp.audioFormat.toUpperCase(),
+                                            icon: <Volume2 size={12} />,
+                                            gradient: getGradient('audio')
+                                        });
                                     }
-                                    if (gp.lmModel) {
-                                        items.push({ label: t('metaLmModel'), value: gp.lmModel });
+                                    if (gp.inferenceSteps) {
+                                        coreItems.push({ 
+                                            label: t('metaInferenceSteps'), 
+                                            value: String(gp.inferenceSteps),
+                                            icon: <Gauge size={12} />,
+                                            gradient: getGradient('tech')
+                                        });
                                     }
-                                    if (gp.genres && gp.genres !== 'N/A') {
-                                        items.push({ label: t('metaGenres'), value: gp.genres });
+                                    if (gp.guidanceScale != null) {
+                                        coreItems.push({ 
+                                            label: t('metaCfg'), 
+                                            value: String(gp.guidanceScale),
+                                            icon: <Settings2 size={12} />,
+                                            gradient: getGradient('tech')
+                                        });
+                                    }
+                                    if (gp.seedText != null && String(gp.seedText).length > 0) {
+                                        coreItems.push({ 
+                                            label: t('metaSeed'), 
+                                            value: String(gp.seedText).substring(0, 12) + (String(gp.seedText).length > 12 ? '...' : ''),
+                                            icon: <Hash size={12} />,
+                                            gradient: getGradient('tech')
+                                        });
+                                    } else if (gp.seed != null && String(gp.seed).length > 0) {
+                                        coreItems.push({ 
+                                            label: t('metaSeed'), 
+                                            value: String(gp.seed),
+                                            icon: <Hash size={12} />,
+                                            gradient: getGradient('tech')
+                                        });
+                                    }
+                                    if (gp.inferMethod) {
+                                        coreItems.push({ 
+                                            label: t('metaInferMethod'), 
+                                            value: gp.inferMethod.toUpperCase(),
+                                            icon: <Zap size={12} />,
+                                            gradient: getGradient('tech')
+                                        });
+                                    }
+                                    if (gp.shift != null) {
+                                        coreItems.push({ 
+                                            label: t('metaShift'), 
+                                            value: String(gp.shift),
+                                            icon: <Radio size={12} />,
+                                            gradient: getGradient('settings')
+                                        });
                                     }
 
+                                    // Advanced params
                                     if (gp.lmBackend) {
-                                        moreItems.push({ label: t('lmBackendLabel'), value: String(gp.lmBackend) });
+                                        moreItems.push({ 
+                                            label: t('lmBackendLabel'), 
+                                            value: String(gp.lmBackend),
+                                            icon: <Terminal size={12} />,
+                                            gradient: getGradient('model')
+                                        });
                                     }
                                     if (gp.thinking != null) {
-                                        moreItems.push({ label: t('thinking'), value: gp.thinking ? 'ON' : 'OFF' });
+                                        moreItems.push({ 
+                                            label: t('thinking'), 
+                                            value: gp.thinking ? 'ON' : 'OFF',
+                                            icon: <Zap size={12} />,
+                                            gradient: getGradient('settings')
+                                        });
                                     }
                                     if (gp.useAdg != null) {
-                                        moreItems.push({ label: t('useAdg'), value: gp.useAdg ? 'ON' : 'OFF' });
+                                        moreItems.push({ 
+                                            label: t('useAdg'), 
+                                            value: gp.useAdg ? 'ON' : 'OFF',
+                                            icon: <Settings2 size={12} />,
+                                            gradient: getGradient('settings')
+                                        });
                                     }
                                     if (gp.batchSize != null) {
-                                        moreItems.push({ label: t('batchSize'), value: String(gp.batchSize) });
+                                        moreItems.push({ 
+                                            label: t('batchSize'), 
+                                            value: String(gp.batchSize),
+                                            icon: <Layers size={12} />,
+                                            gradient: getGradient('tech')
+                                        });
                                     }
                                     if (gp.allowLmBatch != null) {
-                                        moreItems.push({ label: t('allowLmBatch'), value: gp.allowLmBatch ? 'ON' : 'OFF' });
+                                        moreItems.push({ 
+                                            label: t('allowLmBatch'), 
+                                            value: gp.allowLmBatch ? 'ON' : 'OFF',
+                                            icon: <Zap size={12} />,
+                                            gradient: getGradient('settings')
+                                        });
                                     }
                                     if (gp.useCotMetas != null) {
-                                        moreItems.push({ label: t('useCotMetas'), value: gp.useCotMetas ? 'ON' : 'OFF' });
+                                        moreItems.push({ 
+                                            label: t('useCotMetas'), 
+                                            value: gp.useCotMetas ? 'ON' : 'OFF',
+                                            icon: <Settings2 size={12} />,
+                                            gradient: getGradient('settings')
+                                        });
                                     }
                                     if (gp.useCotCaption != null) {
-                                        moreItems.push({ label: t('useCotCaption'), value: gp.useCotCaption ? 'ON' : 'OFF' });
+                                        moreItems.push({ 
+                                            label: t('useCotCaption'), 
+                                            value: gp.useCotCaption ? 'ON' : 'OFF',
+                                            icon: <Settings2 size={12} />,
+                                            gradient: getGradient('settings')
+                                        });
                                     }
                                     if (gp.useCotLanguage != null) {
-                                        moreItems.push({ label: t('useCotLanguage'), value: gp.useCotLanguage ? 'ON' : 'OFF' });
+                                        moreItems.push({ 
+                                            label: t('useCotLanguage'), 
+                                            value: gp.useCotLanguage ? 'ON' : 'OFF',
+                                            icon: <Settings2 size={12} />,
+                                            gradient: getGradient('settings')
+                                        });
                                     }
                                     if (gp.autogen != null) {
-                                        moreItems.push({ label: t('autogen'), value: gp.autogen ? 'ON' : 'OFF' });
+                                        moreItems.push({ 
+                                            label: t('autogen'), 
+                                            value: gp.autogen ? 'ON' : 'OFF',
+                                            icon: <Sparkles size={12} />,
+                                            gradient: getGradient('settings')
+                                        });
                                     }
                                     if (gp.constrainedDecodingDebug != null) {
-                                        moreItems.push({ label: t('constrainedDecodingDebug'), value: gp.constrainedDecodingDebug ? 'ON' : 'OFF' });
+                                        moreItems.push({ 
+                                            label: t('constrainedDecodingDebug'), 
+                                            value: gp.constrainedDecodingDebug ? 'ON' : 'OFF',
+                                            icon: <Terminal size={12} />,
+                                            gradient: getGradient('tech')
+                                        });
                                     }
                                     if (gp.isFormatCaption != null) {
-                                        moreItems.push({ label: t('formatCaption'), value: gp.isFormatCaption ? 'ON' : 'OFF' });
+                                        moreItems.push({ 
+                                            label: t('formatCaption'), 
+                                            value: gp.isFormatCaption ? 'ON' : 'OFF',
+                                            icon: <Settings2 size={12} />,
+                                            gradient: getGradient('settings')
+                                        });
                                     }
                                     if (gp.getScores != null) {
-                                        moreItems.push({ label: t('getScores'), value: gp.getScores ? 'ON' : 'OFF' });
+                                        moreItems.push({ 
+                                            label: t('getScores'), 
+                                            value: gp.getScores ? 'ON' : 'OFF',
+                                            icon: <Gauge size={12} />,
+                                            gradient: getGradient('tech')
+                                        });
                                     }
                                     if (gp.getLrc != null) {
-                                        moreItems.push({ label: t('getLrcLyrics'), value: gp.getLrc ? 'ON' : 'OFF' });
+                                        moreItems.push({ 
+                                            label: t('getLrcLyrics'), 
+                                            value: gp.getLrc ? 'ON' : 'OFF',
+                                            icon: <Mic2 size={12} />,
+                                            gradient: getGradient('settings')
+                                        });
                                     }
 
-                                    const all = genParamsExpanded ? [...items, ...moreItems] : items;
+                                    const all = genParamsExpanded ? [...coreItems, ...moreItems] : coreItems;
                                     if (all.length === 0) return null;
 
                                     return all.map((item, idx) => (
-                                        <div key={idx} className="flex items-center justify-between px-2.5 py-1.5 bg-zinc-100 dark:bg-white/5 rounded-lg border border-zinc-200/50 dark:border-white/5">
-                                            <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">{item.label}</span>
-                                            <span className="text-[11px] font-semibold text-zinc-800 dark:text-zinc-200 font-mono truncate ml-2 max-w-[120px]" title={item.value}>{item.value}</span>
+                                        <div 
+                                            key={idx} 
+                                            className={`group relative flex items-center gap-2 px-3 py-2.5 bg-gradient-to-br ${item.gradient} rounded-xl border hover:shadow-md hover:scale-[1.02] transition-all duration-200 cursor-default`}
+                                        >
+                                            <div className="flex-shrink-0 w-5 h-5 rounded-md bg-white/60 dark:bg-black/30 flex items-center justify-center">
+                                                {item.icon}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-0.5">
+                                                    {item.label}
+                                                </div>
+                                                <div 
+                                                    className="text-xs font-bold text-zinc-800 dark:text-zinc-100 truncate font-mono" 
+                                                    title={item.value}
+                                                >
+                                                    {item.value}
+                                                </div>
+                                            </div>
                                         </div>
                                     ));
                                 })()}
@@ -666,12 +910,25 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ song, onClose, onOpe
     );
 };
 
-const ActionButton: React.FC<{ icon: React.ReactNode; label?: string; active?: boolean; onClick?: () => void }> = ({ icon, label, active, onClick }) => (
-    <button
-        onClick={onClick}
-        className={`flex items-center gap-1.5 ${active ? 'text-pink-600 dark:text-pink-500' : 'text-zinc-400'} hover:text-black dark:hover:text-white transition-colors`}
-    >
-        {icon}
-        {label && <span className="text-xs font-semibold">{label}</span>}
-    </button>
-);
+const ActionButton: React.FC<{ icon: React.ReactNode; label?: string; active?: boolean; variant?: 'pink' | 'blue' | 'emerald' | 'default'; onClick?: () => void }> = ({ icon, label, active, variant = 'default', onClick }) => {
+    const variantClasses = {
+        pink: active
+            ? 'text-pink-600 dark:text-pink-500 bg-pink-50 dark:bg-pink-500/10 border-pink-200 dark:border-pink-500/30'
+            : 'text-zinc-500 dark:text-zinc-400 hover:text-pink-600 dark:hover:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-500/10 border-transparent hover:border-pink-200 dark:hover:border-pink-500/30',
+        blue: 'text-zinc-500 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 border-transparent hover:border-blue-200 dark:hover:border-blue-500/30',
+        emerald: 'text-zinc-500 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border-transparent hover:border-emerald-200 dark:hover:border-emerald-500/30',
+        default: active
+            ? 'text-pink-600 dark:text-pink-500'
+            : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+    };
+
+    return (
+        <button
+            onClick={onClick}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all duration-200 ${variantClasses[variant]}`}
+        >
+            {icon}
+            {label && <span className="text-xs font-semibold">{label}</span>}
+        </button>
+    );
+};

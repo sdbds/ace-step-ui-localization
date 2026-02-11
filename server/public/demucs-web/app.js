@@ -4,6 +4,9 @@
 import * as ort from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.21.0/dist/ort.all.mjs';
 import { DemucsProcessor, CONSTANTS } from './src/index.js';
 
+// i18n helper
+const i18n = window.DemucsI18n;
+
 const { SAMPLE_RATE, TRAINING_SAMPLES, TRACKS, DEFAULT_MODEL_URL } = CONSTANTS;
 
 const LOCAL_MODEL_URL = '../models/htdemucs_embedded.onnx';
@@ -69,11 +72,11 @@ async function init() {
     if (backend === 'webgpu') {
         ort.env.webgpu = ort.env.webgpu || {};
         ort.env.webgpu.powerPreference = 'high-performance';
-        backendBadge.textContent = 'WebGPU (GPU)';
+        backendBadge.textContent = i18n.t('webgpu');
         backendBadge.className = 'badge badge-gpu';
     } else {
         const threads = navigator.hardwareConcurrency || 4;
-        backendBadge.textContent = `WASM (${threads} threads)`;
+        backendBadge.textContent = i18n.t('wasm', {threads});
         backendBadge.className = 'badge badge-cpu';
     }
 
@@ -102,25 +105,25 @@ async function init() {
             const percent = ((loaded / total) * 100).toFixed(1);
             const loadedMB = (loaded / 1024 / 1024).toFixed(1);
             const totalMB = (total / 1024 / 1024).toFixed(1);
-            status.textContent = `Downloading model... ${loadedMB}MB / ${totalMB}MB (${percent}%)`;
+            status.textContent = `${i18n.t('downloadingModel')} ${loadedMB}MB / ${totalMB}MB (${percent}%)`;
             progressFill.style.width = (loaded / total * 100) + '%';
         }
     });
 
-    status.textContent = 'Loading AI model...';
+    status.textContent = i18n.t('loadingAiModel');
 
     try {
         try {
-            status.textContent = 'Downloading model (~172MB)...';
+            status.textContent = i18n.t('downloadingModel');
             await processor.loadModel(DEFAULT_MODEL_URL);
         } catch {
-            status.textContent = 'Loading local model...';
+            status.textContent = i18n.t('loadingLocalModel');
             await processor.loadModel(LOCAL_MODEL_URL);
         }
-        status.textContent = 'Ready - Select an audio file';
+        status.textContent = i18n.t('readySelectAudio');
         progressFill.style.width = '0%';
     } catch (e) {
-        status.textContent = 'Failed to load model: ' + e.message;
+        status.textContent = i18n.t('failedToLoadModel') + ' ' + e.message;
         console.error('Failed to load model:', e);
     }
 
@@ -138,7 +141,7 @@ async function init() {
 
 async function loadAudioFromUrl(url) {
     try {
-        status.textContent = 'Loading audio...';
+        status.textContent = i18n.t('loadingAudio');
         const fileName = decodeURIComponent(url.split('/').pop() || 'audio.mp3');
         audioFileName.textContent = fileName;
 
@@ -150,13 +153,13 @@ async function loadAudioFromUrl(url) {
         audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
         const duration = audioBuffer.duration.toFixed(1);
-        status.textContent = `Loaded: ${duration}s - Starting extraction...`;
+        status.textContent = i18n.t('loadedDurationStarting', {duration});
         processBtn.disabled = false;
 
         // Auto-start extraction
         setTimeout(() => startProcessing(), 500);
     } catch (e) {
-        status.textContent = 'Failed to load audio: ' + e.message;
+        status.textContent = i18n.t('failedToLoadAudio') + ' ' + e.message;
         console.error('Failed to load audio from URL:', e);
     }
 }
@@ -185,16 +188,16 @@ fileInput.addEventListener('change', (e) => {
 
 async function handleFile(file) {
     audioFileName.textContent = file.name;
-    status.textContent = 'Reading audio...';
+    status.textContent = i18n.t('readingAudio');
 
     try {
         const arrayBuffer = await file.arrayBuffer();
         audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
         const duration = audioBuffer.duration.toFixed(1);
-        status.textContent = `Loaded: ${duration}s - Ready to extract`;
+        status.textContent = i18n.t('loadedDurationReady', {duration});
         processBtn.disabled = false;
     } catch (e) {
-        status.textContent = 'Failed to read audio: ' + e.message;
+        status.textContent = i18n.t('failedToReadAudio') + ' ' + e.message;
         console.error('Failed to decode audio:', e);
     }
 }
@@ -206,7 +209,7 @@ async function startProcessing() {
 
     isProcessing = true;
     processBtn.disabled = true;
-    processBtn.textContent = 'Processing...';
+    processBtn.textContent = i18n.t('processing');
     results.classList.remove('visible');
     processStartTime = Date.now();
     statusDetail.innerHTML = '';
@@ -214,8 +217,8 @@ async function startProcessing() {
     statsRow.classList.add('visible');
 
     try {
-        log('Init', 'Starting stem extraction...');
-        status.textContent = 'Preparing audio...';
+        log(i18n.t('init'), i18n.t('startingStemExtraction'));
+        status.textContent = i18n.t('preparingAudio');
         progressFill.style.width = '2%';
 
         let leftChannel = audioBuffer.getChannelData(0);
@@ -224,7 +227,7 @@ async function startProcessing() {
             : leftChannel;
 
         if (audioBuffer.sampleRate !== SAMPLE_RATE) {
-            log('Resample', `${audioBuffer.sampleRate}Hz → ${SAMPLE_RATE}Hz`);
+            log(i18n.t('resample'), `${audioBuffer.sampleRate}Hz → ${SAMPLE_RATE}Hz`);
             const ratio = SAMPLE_RATE / audioBuffer.sampleRate;
             const newLength = Math.floor(leftChannel.length * ratio);
             const newLeft = new Float32Array(newLength);
@@ -243,25 +246,25 @@ async function startProcessing() {
             rightChannel = newRight;
         }
 
-        status.textContent = 'Extracting stems...';
+        status.textContent = i18n.t('extractingStems');
         const separatedTracks = await processor.separate(leftChannel, rightChannel);
         displayResults(separatedTracks);
 
         const totalTime = ((Date.now() - processStartTime) / 1000).toFixed(1);
         const speedRatio = (audioBuffer.duration / parseFloat(totalTime)).toFixed(2);
 
-        log('Done', `Completed in ${totalTime}s (${speedRatio}x realtime)`);
-        status.textContent = `Complete! Extracted 4 stems in ${totalTime}s`;
+        log(i18n.t('done'), i18n.t('completedIn', {time: totalTime, speed: speedRatio}));
+        status.textContent = i18n.t('completeExtractedStems', {time: totalTime});
         progressFill.style.width = '100%';
 
     } catch (e) {
-        status.textContent = 'Processing failed: ' + e.message;
+        status.textContent = i18n.t('processingFailed') + ' ' + e.message;
         console.error('Processing failed:', e);
     }
 
     isProcessing = false;
     processBtn.disabled = false;
-    processBtn.textContent = 'Extract Stems';
+    processBtn.textContent = i18n.t('extractStems');
 }
 
 // Store track URLs for download all feature
@@ -272,10 +275,10 @@ function displayResults(tracks) {
     trackUrls = {};
 
     const TRACK_CONFIG = {
-        drums: { icon: '🥁', label: 'Drums' },
-        bass: { icon: '🎸', label: 'Bass' },
-        other: { icon: '🎹', label: 'Instrumental' },
-        vocals: { icon: '🎤', label: 'Vocals' }
+        drums: { icon: '🥁', label: i18n.t('drums') },
+        bass: { icon: '🎸', label: i18n.t('bass') },
+        other: { icon: '🎹', label: i18n.t('instrumental') },
+        vocals: { icon: '🎤', label: i18n.t('vocals') }
     };
 
     for (const [name, track] of Object.entries(tracks)) {
@@ -320,7 +323,7 @@ function displayResults(tracks) {
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                     </svg>
-                    WAV
+                    ${i18n.t('wav')}
                 </a>
             </div>
 
