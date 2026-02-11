@@ -931,28 +931,74 @@ function AppContent() {
     setIsPlaying(!isPlaying);
   };
 
+  const normalizeSongForState = useCallback((raw: any): Song => {
+    const durationText = (() => {
+      const d = raw?.duration;
+      if (typeof d === 'string') return d;
+      if (typeof d === 'number' && Number.isFinite(d) && d > 0) {
+        return `${Math.floor(d / 60)}:${String(Math.floor(d % 60)).padStart(2, '0')}`;
+      }
+      return '0:00';
+    })();
+
+    const createdAt = (() => {
+      const v = raw?.createdAt ?? raw?.created_at;
+      const d = v ? new Date(v) : new Date();
+      return Number.isNaN(d.getTime()) ? new Date() : d;
+    })();
+
+    const audioUrl = raw?.audioUrl ?? raw?.audio_url;
+
+    return {
+      id: String(raw?.id ?? ''),
+      title: String(raw?.title ?? ''),
+      lyrics: String(raw?.lyrics ?? ''),
+      style: String(raw?.style ?? ''),
+      coverUrl: raw?.coverUrl || raw?.cover_url || `https://picsum.photos/seed/${raw?.id}/400/400`,
+      duration: durationText,
+      createdAt,
+      tags: Array.isArray(raw?.tags) ? raw.tags : [],
+      audioUrl: getAudioUrl(audioUrl, raw?.id),
+      isPublic: raw?.isPublic ?? raw?.is_public,
+      likeCount: raw?.likeCount ?? raw?.like_count,
+      viewCount: raw?.viewCount ?? raw?.view_count,
+      userId: raw?.userId ?? raw?.user_id,
+      creator: raw?.creator,
+      creator_avatar: raw?.creator_avatar,
+      ditModel: raw?.ditModel ?? raw?.dit_model,
+      isGenerating: raw?.isGenerating,
+      queuePosition: raw?.queuePosition,
+      progress: raw?.progress,
+      stage: raw?.stage,
+      generationParams: raw?.generationParams ?? normalizeGenerationParams(raw),
+    };
+  }, [normalizeGenerationParams, getAudioUrl]);
+
   const playSong = (song: Song, list?: Song[]) => {
-    const nextQueue = list && list.length > 0
-      ? list
-      : (playQueue.length > 0 && playQueue.some(s => s.id === song.id))
+    const normalizedSong = normalizeSongForState(song);
+    const normalizedList = Array.isArray(list) ? list.map(normalizeSongForState) : undefined;
+
+    const nextQueue = normalizedList && normalizedList.length > 0
+      ? normalizedList
+      : (playQueue.length > 0 && playQueue.some(s => s.id === normalizedSong.id))
           ? playQueue
-          : (songs.some(s => s.id === song.id) ? songs : [song]);
-    const nextIndex = nextQueue.findIndex(s => s.id === song.id);
-    setPlayQueue(nextQueue);
+          : (songs.some(s => s.id === normalizedSong.id) ? songs : [normalizedSong]);
+    const nextIndex = nextQueue.findIndex(s => s.id === normalizedSong.id);
+    setPlayQueue(nextQueue.map(normalizeSongForState));
     setQueueIndex(nextIndex);
 
-    if (currentSong?.id !== song.id) {
-      const updatedSong = { ...song, viewCount: (song.viewCount || 0) + 1 };
+    if (currentSong?.id !== normalizedSong.id) {
+      const updatedSong = { ...normalizedSong, viewCount: (normalizedSong.viewCount || 0) + 1 };
       setCurrentSong(updatedSong);
       setSelectedSong(updatedSong);
       setIsPlaying(true);
-      setSongs(prev => prev.map(s => s.id === song.id ? updatedSong : s));
-      songsApi.trackPlay(song.id, token).catch(err => console.error('Failed to track play:', err));
+      setSongs(prev => prev.map(s => s.id === updatedSong.id ? { ...s, ...updatedSong } : s));
+      songsApi.trackPlay(updatedSong.id, token).catch(err => console.error('Failed to track play:', err));
     } else {
       togglePlay();
     }
-    if (currentSong?.id === song.id) {
-      setSelectedSong(song);
+    if (currentSong?.id === normalizedSong.id) {
+      setSelectedSong(normalizedSong);
     }
     setShowRightSidebar(true);
   };
@@ -1234,11 +1280,11 @@ function AppContent() {
           return (
             <div className="flex flex-col items-center justify-center h-full gap-4 bg-black">
               <div className="text-zinc-400">{t('userNotFound')}</div>
-              <button 
+              <button
                 onClick={() => {
                   setCurrentView('library');
                   window.history.pushState({}, '', '/library');
-                }} 
+                }}
                 className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-white"
               >
                 {t('goBack')}
@@ -1266,11 +1312,11 @@ function AppContent() {
           return (
             <div className="flex flex-col items-center justify-center h-full gap-4 bg-black">
               <div className="text-zinc-400">{t('playlistNotFound')}</div>
-              <button 
+              <button
                 onClick={() => {
                   setCurrentView('library');
                   window.history.pushState({}, '', '/library');
-                }} 
+                }}
                 className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-white"
               >
                 {t('goBack')}
@@ -1284,7 +1330,7 @@ function AppContent() {
             onBack={handleBackFromPlaylist}
             onPlaySong={playSong}
             onSelect={(s) => {
-              setSelectedSong(s);
+              setSelectedSong(normalizeSongForState(s));
               setShowRightSidebar(true);
             }}
             onNavigateToProfile={handleNavigateToProfile}
@@ -1296,11 +1342,11 @@ function AppContent() {
           return (
             <div className="flex flex-col items-center justify-center h-full gap-4 bg-black">
               <div className="text-zinc-400">{t('songNotFound')}</div>
-              <button 
+              <button
                 onClick={() => {
                   setCurrentView('library');
                   window.history.pushState({}, '', '/library');
-                }} 
+                }}
                 className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-white"
               >
                 {t('goBack')}
@@ -1342,7 +1388,7 @@ function AppContent() {
               // Audio paths from dataset can be relative (./datasets/...) or absolute paths
               const apiBase = import.meta.env.VITE_API_URL || window.location.origin;
               let audioUrl: string;
-              
+
               if (audioPath.startsWith('http')) {
                 // Already a full URL
                 audioUrl = audioPath;
@@ -1353,9 +1399,9 @@ function AppContent() {
                 // Dataset file path - use the secure file endpoint
                 audioUrl = `${apiBase}/api/audio/file?path=${encodeURIComponent(audioPath)}`;
               }
-              
+
               console.log('[Training] Playing sample:', { title, audioPath, audioUrl });
-              
+
               const tempSong: Song = {
                 id: `training-sample-${Date.now()}`,
                 title: title,
@@ -1367,7 +1413,7 @@ function AppContent() {
                 createdAt: new Date().toISOString(),
                 isPrivate: true,
               };
-              
+
               // Set as current song and play
               setCurrentSong(tempSong);
               setIsPlaying(true);
