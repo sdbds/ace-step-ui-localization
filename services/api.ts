@@ -633,6 +633,7 @@ export const trainingApi = {
     format_lyrics?: boolean;
     transcribe_lyrics?: boolean;
     only_unlabeled?: boolean;
+    lm_model_path?: string;
     save_path?: string;
     chunk_size?: number;
     batch_size?: number;
@@ -647,6 +648,7 @@ export const trainingApi = {
     format_lyrics?: boolean;
     transcribe_lyrics?: boolean;
     only_unlabeled?: boolean;
+    lm_model_path?: string;
     save_path?: string;
     chunk_size?: number;
     batch_size?: number;
@@ -704,6 +706,7 @@ export const trainingApi = {
 
   preprocessDataset: (params: {
     output_dir: string;
+    skip_existing?: boolean;
   }, token: string): Promise<{
     message: string;
     output_dir: string;
@@ -712,6 +715,7 @@ export const trainingApi = {
 
   preprocessDatasetAsync: (params: {
     output_dir: string;
+    skip_existing?: boolean;
   }, token: string): Promise<{
     task_id: string;
     message: string;

@@ -78,6 +78,9 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
   const [onlyUnlabeled, setOnlyUnlabeled] = useState(false);
   const [autoLabelChunkSize, setAutoLabelChunkSize] = useState(16);
   const [autoLabelBatchSize, setAutoLabelBatchSize] = useState(1);
+  const [autoLabelLmModelPath, setAutoLabelLmModelPath] = useState<string>(() => {
+    return localStorage.getItem('ace-autoLabelLmModelPath') || '';
+  });
   const [labelProgress, setLabelProgress] = useState('');
   const [labelStatus, setLabelStatus] = useState<{ current: number; total: number; status: string } | null>(null);
   const labelPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -86,6 +89,10 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
   const [saveStatus, setSaveStatus] = useState('');
   const [hasLoadedDatasetJson, setHasLoadedDatasetJson] = useState(false);
   const [preprocessOutputDir, setPreprocessOutputDir] = useState('./datasets/preprocessed_tensors');
+  const [preprocessSkipExisting, setPreprocessSkipExisting] = useState<boolean>(() => {
+    const v = localStorage.getItem('ace-preprocessSkipExisting');
+    return v === '1' || v === 'true';
+  });
   const [preprocessProgress, setPreprocessProgress] = useState('');
   const [preprocessStatus, setPreprocessStatus] = useState<{ current: number; total: number; status: string } | null>(null);
 
@@ -113,7 +120,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
   // LoKR Settings
   const [lokrLinearDim, setLokrLinearDim] = useState(64);
   const [lokrLinearAlpha, setLokrLinearAlpha] = useState(128);
-  const [lokrFactor, setLokrFactor] = useState(-1);
+  const [lokrFactor, setLokrFactor] = useState(8);
   const [lokrDecomposeBoth, setLokrDecomposeBoth] = useState(false);
   const [lokrUseTucker, setLokrUseTucker] = useState(false);
   const [lokrUseScalar, setLokrUseScalar] = useState(false);
@@ -144,6 +151,17 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
   const [trainingStartTime, setTrainingStartTime] = useState<number | null>(null);
   const [currentEpoch, setCurrentEpoch] = useState(0);
   const [trainingStatus, setTrainingStatus] = useState<any>(null);
+
+  const trainingLogRef = useRef('');
+  const showTensorboardRef = useRef(false);
+
+  useEffect(() => {
+    trainingLogRef.current = trainingLog;
+  }, [trainingLog]);
+
+  useEffect(() => {
+    showTensorboardRef.current = showTensorboard;
+  }, [showTensorboard]);
 
   // Transform API samples to display format
   const transformSamples = (samples: any[]): DisplaySample[] => {
@@ -366,16 +384,18 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
         }
 
         // Auto-expand TensorBoard when training starts (step > 0)
-        if (status.current_step && status.current_step > 0 && !showTensorboard && status.tensorboard_url) {
+        if (status.current_step && status.current_step > 0 && !showTensorboardRef.current && status.tensorboard_url) {
+          showTensorboardRef.current = true;
           setShowTensorboard(true);
         }
 
         // Update training log from backend
-        const prevLog = trainingLog;
+        const prevLog = trainingLogRef.current;
         if (status.training_log && status.training_log !== prevLog) {
+          trainingLogRef.current = status.training_log;
           setTrainingLog(status.training_log);
           // Refresh iframe when log changes (new training step)
-          if (showTensorboard) {
+          if (showTensorboardRef.current) {
             setIframeKey(prev => prev + 1);
           }
         }
@@ -416,6 +436,18 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
       setLokrWeightDecompose(true);
     }
   }, [adapterType]);
+
+  useEffect(() => {
+    if (isTraining) return;
+    setTrainingProgress('');
+    setTrainingLog('');
+    setTrainingStatus(null);
+    setTensorboardUrl(null);
+    setShowTensorboard(false);
+    setIframeKey((v) => v + 1);
+    setTrainingStartTime(null);
+    setCurrentEpoch(0);
+  }, [adapterType, isTraining]);
 
   const handleLoadJson = async () => {
     if (!token) return;
@@ -471,6 +503,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
       const startResult = await trainingApi.autoLabelAsync({
         skip_metas: skipMetas,
         only_unlabeled: onlyUnlabeled,
+        lm_model_path: autoLabelLmModelPath.trim() ? autoLabelLmModelPath.trim() : undefined,
         save_path: savePath,
         chunk_size: Math.max(1, Number(autoLabelChunkSize) || 1),
         batch_size: Math.max(1, Number(autoLabelBatchSize) || 1),
@@ -647,6 +680,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
       // Start async preprocessing task
       const startResult = await trainingApi.preprocessDatasetAsync({
         output_dir: preprocessOutputDir,
+        skip_existing: preprocessSkipExisting,
       }, token);
 
       if (!startResult || !startResult.task_id) {
@@ -776,6 +810,13 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
         return;
       }
       setTrainingProgress(result.message || 'Training stopped');
+      setTrainingLog('');
+      setTrainingStatus(null);
+      setTensorboardUrl(null);
+      setShowTensorboard(false);
+      setIframeKey((v) => v + 1);
+      setTrainingStartTime(null);
+      setCurrentEpoch(0);
     } catch (error: any) {
       setTrainingProgress(`${t('error')}: ${error?.message || 'Failed to stop training'}`);
     }
@@ -1070,6 +1111,25 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
                   step={1}
                   onChange={setAutoLabelBatchSize}
                 />
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                    {t('lmModelLabel')}
+                  </label>
+                  <select
+                    value={autoLabelLmModelPath}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setAutoLabelLmModelPath(v);
+                      localStorage.setItem('ace-autoLabelLmModelPath', v);
+                    }}
+                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  >
+                    <option value="">{t('default')}</option>
+                    <option value="acestep-5Hz-lm-0.6B">acestep-5Hz-lm-0.6B</option>
+                    <option value="acestep-5Hz-lm-1.7B">acestep-5Hz-lm-1.7B</option>
+                    <option value="acestep-5Hz-lm-4B">acestep-5Hz-lm-4B</option>
+                  </select>
+                </div>
               </div>
 
               <button
@@ -1154,6 +1214,19 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
                 <p className="text-xs text-zinc-600 dark:text-zinc-400">
                   {t('preprocessDescription')}
                 </p>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={preprocessSkipExisting}
+                    onChange={(e) => {
+                      const v = e.target.checked;
+                      setPreprocessSkipExisting(v);
+                      localStorage.setItem('ace-preprocessSkipExisting', v ? '1' : '0');
+                    }}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">{t('skipExisting')}</span>
+                </div>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -1337,9 +1410,9 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
                       label={t('factor')}
                       value={lokrFactor}
                       min={-1}
-                      max={32}
+                      max={8}
                       step={1}
-                      onChange={setLokrFactor}
+                      onChange={(val) => setLokrFactor(val === 0 ? 1 : val)}
                       formatDisplay={(val) => val === -1 ? t('factorAuto') : val.toString()}
                       autoLabel={t('factorAuto')}
                     />
