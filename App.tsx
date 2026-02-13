@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Component, PropsWithChildren } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { CreatePanel } from './components/CreatePanel';
 import { SongList } from './components/SongList';
@@ -23,6 +23,55 @@ import { Toast, ToastType } from './components/Toast';
 import { SearchPage } from './components/SearchPage';
 import { ConfirmDialog } from './components/ConfirmDialog';
 
+
+type AppErrorBoundaryProps = PropsWithChildren<{}>;
+type AppErrorBoundaryState = { error: Error | null };
+
+class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundaryState> {
+  state: AppErrorBoundaryState = { error: null };
+
+  static getDerivedStateFromError(error: Error): AppErrorBoundaryState {
+    return { error };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('App crashed:', error);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="w-full h-full min-h-screen flex items-center justify-center bg-black text-zinc-200 p-6">
+          <div className="max-w-2xl w-full bg-zinc-900/60 border border-white/10 rounded-2xl p-6 space-y-4">
+            <div className="text-lg font-bold">UI crashed</div>
+            <div className="text-sm text-zinc-300 break-words whitespace-pre-wrap">{this.state.error.message}</div>
+            {this.state.error.stack ? (
+              <pre className="text-xs text-zinc-400 break-words whitespace-pre-wrap bg-black/40 border border-white/10 rounded-lg p-3 overflow-auto max-h-72">
+                {this.state.error.stack}
+              </pre>
+            ) : null}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 rounded-lg bg-white text-black font-semibold"
+              >
+                Reload
+              </button>
+              <button
+                onClick={() => this.setState({ error: null })}
+                className="px-4 py-2 rounded-lg bg-zinc-800 text-zinc-200 font-semibold"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 function AppContent() {
   // i18n
@@ -414,9 +463,11 @@ function AppContent() {
         const songsMap = new Map<string, Song>();
         [...mySongs, ...likedSongs].forEach(s => songsMap.set(s.id, s));
 
-        // Preserve any generating songs (temp songs)
+        // Preserve any generating songs that still exist in the database
+        // If a generating song is not in the loaded songs, it may have been deleted
         setSongs(prev => {
-          const generatingSongs = prev.filter(s => s.isGenerating);
+          const loadedSongIds = new Set(songsMap.keys());
+          const generatingSongs = prev.filter(s => s.isGenerating && loadedSongIds.has(s.id));
           const loadedSongs = Array.from(songsMap.values());
           return [...generatingSongs, ...loadedSongs];
         });
@@ -682,9 +733,10 @@ function AppContent() {
         generationParams: normalizeGenerationParams(s),
       }));
 
-      // Preserve any generating songs that aren't in the loaded list
+      // Preserve only generating songs that still exist in the database
       setSongs(prev => {
-        const generatingSongs = prev.filter(s => s.isGenerating);
+        const loadedSongIds = new Set(loadedSongs.map(s => s.id));
+        const generatingSongs = prev.filter(s => s.isGenerating && loadedSongIds.has(s.id));
         const mergedSongs = [...generatingSongs];
         for (const song of loadedSongs) {
           if (!mergedSongs.some(s => s.id === song.id)) {
@@ -781,25 +833,6 @@ function AppContent() {
     setCurrentView('create');
     setMobileShowList(false);
 
-    // Create unique temp ID for this job
-    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const tempSong: Song = {
-      id: tempId,
-      title: params.title || 'Generating...',
-      lyrics: '',
-      style: params.style,
-      coverUrl: 'https://picsum.photos/200/200?blur=10',
-      duration: '--:--',
-      createdAt: new Date(),
-      isGenerating: true,
-      tags: params.customMode ? ['custom'] : ['simple'],
-      isPublic: true
-    };
-
-    setSongs(prev => [tempSong, ...prev]);
-    setSelectedSong(tempSong);
-    setShowRightSidebar(true);
-
     try {
       const job = await generateApi.startGeneration({
         customMode: params.customMode,
@@ -859,17 +892,29 @@ function AppContent() {
         isFormatCaption: params.isFormatCaption,
       }, token);
 
+      const tempId = `job_${job.jobId}`;
+      const tempSong: Song = {
+        ...buildTempSongFromParams(params, tempId),
+        queuePosition: job.status === 'queued' ? job.queuePosition : undefined,
+        stage: job.status,
+      };
+
+      setSongs(prev => [tempSong, ...prev]);
+      setSelectedSong(tempSong);
+      setShowRightSidebar(true);
+
       beginPollingJob(job.jobId, tempId);
 
     } catch (e) {
       console.error('Generation error:', e);
-      setSongs(prev => prev.filter(s => s.id !== tempId));
-
       // Only set isGenerating to false if no other jobs are running
       if (activeJobsRef.current.size === 0) {
         setIsGenerating(false);
       }
-      showToast(t('generationFailed'), 'error');
+
+      const msg = e instanceof Error ? e.message : '';
+      const userMsg = msg ? `${t('generationFailed')}: ${msg}` : t('generationFailed');
+      showToast(userMsg, 'error');
     }
   };
 
@@ -1061,7 +1106,7 @@ function AppContent() {
     handleDeleteSongs([song]);
   };
 
-  const handleDeleteSongs = (songsToDelete: Song[]) => {
+  const handleDeleteSongs = (songsToDelete: Song[], onSuccess?: () => void) => {
     if (!token || songsToDelete.length === 0) return;
 
     const isSingle = songsToDelete.length === 1;
@@ -1076,13 +1121,47 @@ function AppContent() {
       onConfirm: async () => {
         setConfirmDialog(null);
 
-        const idsToDelete = new Set(songsToDelete.map(song => song.id));
         const succeeded: string[] = [];
         const failed: string[] = [];
+        const hardRemoveIds = new Set<string>();
+
+        const cancelPollingForTempId = (tempId: string) => {
+          for (const [jobId, jobData] of activeJobsRef.current.entries()) {
+            if (jobData.tempId === tempId) {
+              cleanupJob(jobId, tempId);
+              break;
+            }
+          }
+        };
 
         for (const song of songsToDelete) {
+          if (song.id.startsWith('temp_')) {
+            cancelPollingForTempId(song.id);
+            hardRemoveIds.add(song.id);
+            succeeded.push(song.id);
+            continue;
+          }
+
+          if (song.id.startsWith('job_')) {
+            cancelPollingForTempId(song.id);
+            hardRemoveIds.add(song.id);
+            succeeded.push(song.id);
+
+            const jobId = song.id.slice('job_'.length);
+            try {
+              await generateApi.deleteJob(jobId, token!);
+            } catch (error) {
+              const msg = error instanceof Error ? error.message : String(error);
+              if (!msg.startsWith('404:')) {
+                console.error('Failed to delete generation job:', error);
+              }
+            }
+            continue;
+          }
+
           try {
             await songsApi.deleteSong(song.id, token!);
+            hardRemoveIds.add(song.id);
             succeeded.push(song.id);
           } catch (error) {
             console.error('Failed to delete song:', error);
@@ -1090,8 +1169,8 @@ function AppContent() {
           }
         }
 
-        if (succeeded.length > 0) {
-          setSongs(prev => prev.filter(s => !idsToDelete.has(s.id) || failed.includes(s.id)));
+        if (hardRemoveIds.size > 0) {
+          setSongs(prev => prev.filter(s => !hardRemoveIds.has(s.id)));
 
           setLikedSongIds(prev => {
             const next = new Set(prev);
@@ -1112,7 +1191,10 @@ function AppContent() {
             }
           }
 
-          setPlayQueue(prev => prev.filter(s => !idsToDelete.has(s.id) || failed.includes(s.id)));
+          setPlayQueue(prev => prev.filter(s => !hardRemoveIds.has(s.id)));
+
+          // Call success callback (e.g., to exit selection mode)
+          onSuccess?.();
         }
 
         if (failed.length > 0) {
@@ -1405,13 +1487,15 @@ function AppContent() {
               const tempSong: Song = {
                 id: `training-sample-${Date.now()}`,
                 title: title,
-                creator: 'Training Sample',
                 audioUrl: audioUrl,
                 lyrics: '',
                 style: '',
-                duration: 30,
-                createdAt: new Date().toISOString(),
-                isPrivate: true,
+                coverUrl: `https://picsum.photos/seed/training-${Date.now()}/400/400`,
+                duration: '0:30',
+                createdAt: new Date(),
+                tags: [],
+                isPublic: false,
+                creator: 'Training Sample',
               };
 
               // Set as current song and play
@@ -1637,7 +1721,9 @@ function AppContent() {
 export default function App() {
   return (
     <I18nProvider>
-      <AppContent />
+      <AppErrorBoundary>
+        <AppContent />
+      </AppErrorBoundary>
     </I18nProvider>
   );
 }

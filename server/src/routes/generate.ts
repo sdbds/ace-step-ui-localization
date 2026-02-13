@@ -173,6 +173,7 @@ router.post('/upload-audio', authMiddleware, audioUpload.single('audio'), async 
 });
 
 router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  let localJobId: string | null = null;
   try {
     const {
       customMode,
@@ -303,7 +304,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
     };
 
     // Create job record in database
-    const localJobId = generateUUID();
+    localJobId = generateUUID();
     await pool.query(
       `INSERT INTO generation_jobs (id, user_id, status, params, created_at, updated_at)
        VALUES (?, ?, 'queued', ?, datetime('now'), datetime('now'))`,
@@ -360,7 +361,16 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
 
     if (!acestepResponse.ok) {
       const error = await acestepResponse.json().catch(() => ({ error: 'Generation failed' }));
-      throw new Error(error.error || error.message || 'Failed to start generation');
+      const msg = error.error || error.message || 'Failed to start generation';
+      try {
+        await pool.query(
+          `UPDATE generation_jobs SET status = 'failed', error = ?, updated_at = datetime('now') WHERE id = ?`,
+          [String(msg), localJobId]
+        );
+      } catch (dbErr) {
+        console.error('Failed to mark generation job failed:', dbErr);
+      }
+      throw new Error(msg);
     }
 
     const acestepResult = await acestepResponse.json();
@@ -383,6 +393,18 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
     });
   } catch (error) {
     console.error('Generate error:', error);
+
+    if (localJobId) {
+      try {
+        await pool.query(
+          `UPDATE generation_jobs SET status = 'failed', error = ?, updated_at = datetime('now') WHERE id = ?`,
+          [String((error as Error)?.message || 'Generation failed'), localJobId]
+        );
+      } catch (dbErr) {
+        console.error('Failed to mark generation job failed:', dbErr);
+      }
+    }
+
     res.status(500).json({ error: (error as Error).message || 'Generation failed' });
   }
 });
@@ -411,6 +433,17 @@ router.get('/status/:jobId', authMiddleware, async (req: AuthenticatedRequest, r
     // If job is still running, check ACE-Step status
     if (['pending', 'queued', 'running'].includes(job.status) && job.acestep_task_id) {
       try {
+        const createdAtMs = (() => {
+          try {
+            const d = new Date(job.created_at);
+            const t = d.getTime();
+            return Number.isFinite(t) ? t : Date.now();
+          } catch {
+            return Date.now();
+          }
+        })();
+        const jobAgeMs = Date.now() - createdAtMs;
+
         // Query 8001 API for task status
         const queryResponse = await fetch(`${config.acestep.apiUrl}/query_result`, {
           method: 'POST',
@@ -424,7 +457,28 @@ router.get('/status/:jobId', authMiddleware, async (req: AuthenticatedRequest, r
         });
 
         if (!queryResponse.ok) {
-          throw new Error('Failed to query ACE-Step status');
+          const raw = await queryResponse.text().catch(() => '');
+          const msg = `ACE-Step status query failed (${queryResponse.status})` + (raw ? `: ${raw.slice(0, 200)}` : '');
+          const shouldFail = (queryResponse.status >= 400 && queryResponse.status < 500) || jobAgeMs > 2 * 60 * 1000;
+          if (shouldFail) {
+            try {
+              await pool.query(
+                `UPDATE generation_jobs SET status = 'failed', error = ?, updated_at = datetime('now') WHERE id = ?`,
+                [msg, req.params.jobId]
+              );
+            } catch (dbErr) {
+              console.error('Failed to mark job failed:', dbErr);
+            }
+            res.json({
+              jobId: req.params.jobId,
+              status: 'failed',
+              result: null,
+              error: msg,
+            });
+            return;
+          }
+
+          throw new Error(msg);
         }
 
         const queryResult = await queryResponse.json();
@@ -436,7 +490,25 @@ router.get('/status/:jobId', authMiddleware, async (req: AuthenticatedRequest, r
         if (!taskData) {
           console.error('Failed to parse task data. Full response:', JSON.stringify(queryResult, null, 2));
           console.error('Looking for task_id:', job.acestep_task_id);
-          throw new Error(`No task data in response`);
+          const msg = 'No task data in response';
+          if (jobAgeMs > 2 * 60 * 1000) {
+            try {
+              await pool.query(
+                `UPDATE generation_jobs SET status = 'failed', error = ?, updated_at = datetime('now') WHERE id = ?`,
+                [msg, req.params.jobId]
+              );
+            } catch (dbErr) {
+              console.error('Failed to mark job failed:', dbErr);
+            }
+            res.json({
+              jobId: req.params.jobId,
+              status: 'failed',
+              result: null,
+              error: msg,
+            });
+            return;
+          }
+          throw new Error(msg);
         }
 
         console.log('Task data:', JSON.stringify(taskData, null, 2));
@@ -669,6 +741,36 @@ router.get('/status/:jobId', authMiddleware, async (req: AuthenticatedRequest, r
         return;
       } catch (aceError) {
         console.error('ACE-Step status check error:', aceError);
+
+        const createdAtMs = (() => {
+          try {
+            const d = new Date(job.created_at);
+            const t = d.getTime();
+            return Number.isFinite(t) ? t : Date.now();
+          } catch {
+            return Date.now();
+          }
+        })();
+        const jobAgeMs = Date.now() - createdAtMs;
+        if (jobAgeMs > 10 * 60 * 1000) {
+          const msg = aceError instanceof Error ? aceError.message : 'ACE-Step status check error';
+          try {
+            await pool.query(
+              `UPDATE generation_jobs SET status = 'failed', error = ?, updated_at = datetime('now') WHERE id = ?`,
+              [String(msg), req.params.jobId]
+            );
+          } catch (dbErr) {
+            console.error('Failed to mark job failed:', dbErr);
+          }
+
+          res.json({
+            jobId: req.params.jobId,
+            status: 'failed',
+            result: null,
+            error: String(msg),
+          });
+          return;
+        }
       }
     }
 
@@ -683,6 +785,45 @@ router.get('/status/:jobId', authMiddleware, async (req: AuthenticatedRequest, r
     });
   } catch (error) {
     console.error('Status check error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/job/:jobId', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const jobId = req.params.jobId;
+    if (!jobId) {
+      res.status(400).json({ error: 'Job ID is required' });
+      return;
+    }
+
+    const jobResult = await pool.query(
+      `SELECT id, user_id
+       FROM generation_jobs
+       WHERE id = ?`,
+      [jobId]
+    );
+
+    if (jobResult.rows.length === 0) {
+      res.status(404).json({ error: 'Job not found' });
+      return;
+    }
+
+    const job = jobResult.rows[0];
+    if (job.user_id !== req.user!.id) {
+      res.status(403).json({ error: 'Access denied' });
+      return;
+    }
+
+    await pool.query(
+      `DELETE FROM generation_jobs
+       WHERE id = ?`,
+      [jobId]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete job error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

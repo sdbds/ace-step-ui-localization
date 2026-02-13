@@ -351,6 +351,9 @@ export const generateApi = {
   getHistory: (token: string): Promise<{ jobs: GenerationJob[] }> =>
     api('/api/generate/history', { token }),
 
+  deleteJob: (jobId: string, token: string): Promise<{ success: boolean }> =>
+    api(`/api/generate/job/${jobId}`, { method: 'DELETE', token }),
+
   uploadAudio: async (file: File, token: string): Promise<{ url: string; key: string }> => {
     const formData = new FormData();
     formData.append('audio', file);

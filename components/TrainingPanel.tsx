@@ -96,8 +96,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
   const [preprocessProgress, setPreprocessProgress] = useState('');
   const [preprocessStatus, setPreprocessStatus] = useState<{ current: number; total: number; status: string } | null>(null);
 
-  // Collapsible sections
-  const [datasetSettingsOpen, setDatasetSettingsOpen] = useState(true);
+
 
   // Sample editing
   const [editingSample, setEditingSample] = useState<DatasetSample | null>(null);
@@ -328,7 +327,6 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
                 if (s.result) {
                   setLabelProgress(s.result.message || 'Labeling completed');
                   setAudioFiles(transformSamples(s.result.samples || []));
-                  setDatasetSettingsOpen(false);
                 }
                 setLabelStatus(null);
               } else if (s.status === 'failed') {
@@ -550,7 +548,6 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
             if (statusResult.result) {
               setLabelProgress(statusResult.result.message || 'Labeling completed');
               setAudioFiles((prev) => mergeSamplesPreserveEditing(prev, statusResult.result?.samples || []));
-              setDatasetSettingsOpen(false);
             }
             setLabelStatus(null);
           } else if (statusResult.status === 'failed') {
@@ -971,17 +968,8 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
             {/* Dataset Settings & Auto-Label Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Dataset Settings */}
-              <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 rounded-xl border-2 border-indigo-200 dark:border-indigo-800 shadow-md">
-                <button
-                  onClick={() => setDatasetSettingsOpen(!datasetSettingsOpen)}
-                  className="w-full flex items-center justify-between p-4 hover:bg-zinc-100 dark:hover:bg-zinc-700/50 transition-colors rounded-t-xl"
-                >
-                  <h3 className="text-base font-semibold text-zinc-900 dark:text-white">⚙️ {t('datasetSettings')}</h3>
-                  {datasetSettingsOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                </button>
-
-                {datasetSettingsOpen && (
-                  <div className="p-4 pt-0 space-y-3">
+              <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 rounded-xl border-2 border-indigo-200 dark:border-indigo-800 shadow-md p-4 space-y-3">
+                <h3 className="text-base font-semibold text-zinc-900 dark:text-white">⚙️ {t('datasetSettings')}</h3>
                     <div className="space-y-3">
                       <div>
                         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
@@ -1054,8 +1042,6 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
                       />
                     </div>
                   </div>
-                )}
-              </div>
 
               {/* Auto-Label */}
               <div className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-xl p-4 space-y-4 border-2 border-violet-200 dark:border-violet-800 shadow-md">
@@ -1064,38 +1050,59 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
                 {t('autoLabelDescription')}
               </p>
 
-              <div className="flex items-center gap-6">
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={skipMetas}
-                      onChange={(e) => setSkipMetas(e.target.checked)}
-                      className="peer sr-only"
-                    />
-                    <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-violet-500 peer-checked:to-purple-500 peer-checked:border-violet-500 transition-all duration-200 group-hover:border-violet-300 dark:group-hover:border-violet-500/50 shadow-sm" />
-                    <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('skipMetas')}</span>
-                </label>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                {/* Left side: Checkboxes */}
+                <div className="flex items-center gap-6">
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={skipMetas}
+                        onChange={(e) => setSkipMetas(e.target.checked)}
+                        className="peer sr-only"
+                      />
+                      <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-violet-500 peer-checked:to-purple-500 peer-checked:border-violet-500 transition-all duration-200 group-hover:border-violet-300 dark:group-hover:border-violet-500/50 shadow-sm" />
+                      <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('skipMetas')}</span>
+                  </label>
 
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={onlyUnlabeled}
-                      onChange={(e) => setOnlyUnlabeled(e.target.checked)}
-                      className="peer sr-only"
-                    />
-                    <div className="w-5 h-5 bg-white dark:bg-zinc-800 border-2 border-zinc-300 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-violet-500 peer-checked:to-purple-500 peer-checked:border-violet-500 transition-all duration-200 group-hover:border-violet-400 dark:group-hover:border-violet-500/50" />
-                    <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('onlyUnlabeled')}</span>
-                </label>
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={onlyUnlabeled}
+                        onChange={(e) => setOnlyUnlabeled(e.target.checked)}
+                        className="peer sr-only"
+                      />
+                      <div className="w-5 h-5 bg-white dark:bg-zinc-800 border-2 border-zinc-300 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-violet-500 peer-checked:to-purple-500 peer-checked:border-violet-500 transition-all duration-200 group-hover:border-violet-400 dark:group-hover:border-violet-500/50" />
+                      <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('onlyUnlabeled')}</span>
+                  </label>
+                </div>
+
+                {/* Right side: LM Model dropdown */}
+                <div className="flex-shrink-0">
+                  <select
+                    value={autoLabelLmModelPath}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setAutoLabelLmModelPath(v);
+                      localStorage.setItem('ace-autoLabelLmModelPath', v);
+                    }}
+                    className="px-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  >
+                    <option value="">{t('lmModelLabel')} - {t('default')}</option>
+                    <option value="acestep-5Hz-lm-0.6B">acestep-5Hz-lm-0.6B</option>
+                    <option value="acestep-5Hz-lm-1.7B">acestep-5Hz-lm-1.7B</option>
+                    <option value="acestep-5Hz-lm-4B">acestep-5Hz-lm-4B</option>
+                  </select>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -1115,25 +1122,6 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
                   step={1}
                   onChange={setAutoLabelBatchSize}
                 />
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
-                    {t('lmModelLabel')}
-                  </label>
-                  <select
-                    value={autoLabelLmModelPath}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setAutoLabelLmModelPath(v);
-                      localStorage.setItem('ace-autoLabelLmModelPath', v);
-                    }}
-                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  >
-                    <option value="">{t('default')}</option>
-                    <option value="acestep-5Hz-lm-0.6B">acestep-5Hz-lm-0.6B</option>
-                    <option value="acestep-5Hz-lm-1.7B">acestep-5Hz-lm-1.7B</option>
-                    <option value="acestep-5Hz-lm-4B">acestep-5Hz-lm-4B</option>
-                  </select>
-                </div>
               </div>
 
               <button

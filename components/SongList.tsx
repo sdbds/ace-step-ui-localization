@@ -25,7 +25,7 @@ interface SongListProps {
     onReusePrompt?: (song: Song) => void;
     onDelete?: (song: Song) => void;
     onSongUpdate?: (updatedSong: Song) => void;
-    onDeleteMany?: (songs: Song[]) => void;
+    onDeleteMany?: (songs: Song[], onSuccess?: () => void) => void;
     onUseAsReference?: (song: Song) => void;
     onCoverSong?: (song: Song) => void;
     onUseUploadAsReference?: (track: { audio_url: string; filename: string }) => void;
@@ -208,7 +208,7 @@ export const SongList: React.FC<SongListProps> = ({
     }, [filteredSongs, filteredUploads]);
 
     const selectableSongs = useMemo(
-        () => filteredSongs.filter(song => !song.isGenerating),
+        () => filteredSongs,
         [filteredSongs]
     );
 
@@ -321,10 +321,10 @@ export const SongList: React.FC<SongListProps> = ({
                                 </button>
                                 <button
                                     onClick={() => {
-                                        if (!selectedSongs.length) return;
-                                        onDeleteMany?.(selectedSongs);
-                                        setSelectedIds(new Set());
-                                        setIsSelecting(false);
+                                        if (!selectedSongs.length || !onDeleteMany) return;
+                                        onDeleteMany(selectedSongs, () => {
+                                            setIsSelecting(false);
+                                        });
                                     }}
                                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${selectedSongs.length
                                             ? 'border-red-500 text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10'
@@ -370,7 +370,6 @@ export const SongList: React.FC<SongListProps> = ({
                                     onPlay={() => onPlay(item.song)}
                                     onSelect={() => onSelect(item.song)}
                                     onToggleSelect={() => {
-                                        if (item.song.isGenerating) return;
                                         setSelectedIds(prev => {
                                             const next = new Set(prev);
                                             if (next.has(item.song.id)) next.delete(item.song.id);
@@ -467,6 +466,7 @@ const SongItem: React.FC<SongItemProps> = ({
     onCoverSong
 }) => {
     const { token } = useAuth();
+    const { t } = useI18n();
     const [showDropdown, setShowDropdown] = useState(false);
     const [shareModalOpen, setShareModalOpen] = useState(false);
     const [imageError, setImageError] = useState(false);
@@ -549,8 +549,7 @@ const SongItem: React.FC<SongItemProps> = ({
                     className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${isChecked
                             ? 'bg-pink-600 border-pink-600 text-white'
                             : 'border-zinc-300 dark:border-zinc-600 text-transparent hover:border-zinc-400 dark:hover:border-zinc-500'
-                        } ${song.isGenerating ? 'opacity-40 cursor-not-allowed' : ''}`}
-                    disabled={song.isGenerating}
+                        }`}
                     aria-pressed={isChecked}
                 >
                     <Check size={12} strokeWidth={3} className={isChecked ? 'text-white' : 'text-transparent'} />

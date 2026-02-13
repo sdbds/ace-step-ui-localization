@@ -213,7 +213,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
 
   // LoRA Parameters
   const [showLoraPanel, setShowLoraPanel] = useState(false);
-  const [loraPath, setLoraPath] = useState('./lora_output/final/adapter');
+  const [loraPath, setLoraPath] = useState('./lokr_output/final/lokr_weights.safetensors');
   const [loraLoaded, setLoraLoaded] = useState(false);
   const [loraScale, setLoraScale] = useState(1.0);
   const [loraError, setLoraError] = useState<string | null>(null);
@@ -2028,7 +2028,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 <Sliders size={16} className="text-zinc-500" />
                 <span>LoRA</span>
               </div>
-              <ChevronDown size={16} className={`text-zinc-500 transition-transform ${showLoraPanel ? 'rotate-180' : ''}`} />
+              <ChevronDown size={18} className={`text-pink-500 chevron-icon ${showLoraPanel ? 'rotated' : ''}`} />
             </button>
 
             {showLoraPanel && (
@@ -2154,7 +2154,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
             <Settings2 size={16} className="text-zinc-500" />
             <span>{t('advancedSettings')}</span>
           </div>
-          <ChevronDown size={16} className={`text-zinc-500 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+          <ChevronDown size={18} className={`text-pink-500 chevron-icon ${showAdvanced ? 'rotated' : ''}`} />
         </button>
 
         {showAdvanced && (
@@ -2366,7 +2366,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                   <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-normal">{t('controlLyricGeneration')}</span>
                 </div>
               </div>
-              <ChevronDown size={16} className={`text-zinc-500 transition-transform ${showLmParams ? 'rotate-180' : ''}`} />
+              <ChevronDown size={18} className={`text-pink-500 chevron-icon ${showLmParams ? 'rotated' : ''}`} />
             </button>
 
             {showLmParams && (
