@@ -466,8 +466,7 @@ function AppContent() {
         // Preserve any generating songs that still exist in the database
         // If a generating song is not in the loaded songs, it may have been deleted
         setSongs(prev => {
-          const loadedSongIds = new Set(songsMap.keys());
-          const generatingSongs = prev.filter(s => s.isGenerating && loadedSongIds.has(s.id));
+          const generatingSongs = prev.filter(s => s.isGenerating);
           const loadedSongs = Array.from(songsMap.values());
           return [...generatingSongs, ...loadedSongs];
         });
@@ -734,9 +733,9 @@ function AppContent() {
       }));
 
       // Preserve only generating songs that still exist in the database
+      // Preserve any generating songs (they have temp IDs that won't be in the database)
       setSongs(prev => {
-        const loadedSongIds = new Set(loadedSongs.map(s => s.id));
-        const generatingSongs = prev.filter(s => s.isGenerating && loadedSongIds.has(s.id));
+        const generatingSongs = prev.filter(s => s.isGenerating);
         const mergedSongs = [...generatingSongs];
         for (const song of loadedSongs) {
           if (!mergedSongs.some(s => s.id === song.id)) {
@@ -746,7 +745,6 @@ function AppContent() {
         // Sort by creation date, newest first
         return mergedSongs.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       });
-
       // If the current selection was a temp/generating song, replace it with newest real song
       if (selectedSong?.isGenerating || (selectedSong && !loadedSongs.some(s => s.id === selectedSong.id))) {
         setSelectedSong(loadedSongs[0] ?? null);
