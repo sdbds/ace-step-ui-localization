@@ -1219,17 +1219,25 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
                   {t('preprocessDescription')}
                 </p>
                 <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={preprocessSkipExisting}
-                    onChange={(e) => {
-                      const v = e.target.checked;
-                      setPreprocessSkipExisting(v);
-                      localStorage.setItem('ace-preprocessSkipExisting', v ? '1' : '0');
-                    }}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">{t('skipExisting')}</span>
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={preprocessSkipExisting}
+                        onChange={(e) => {
+                          const v = e.target.checked;
+                          setPreprocessSkipExisting(v);
+                          localStorage.setItem('ace-preprocessSkipExisting', v ? '1' : '0');
+                        }}
+                        className="peer sr-only"
+                      />
+                      <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-amber-500 peer-checked:to-yellow-500 peer-checked:border-amber-500 transition-all duration-200 group-hover:border-amber-300 dark:group-hover:border-amber-500/50 shadow-sm" />
+                      <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('skipPreprocess')}</span>
+                  </label>
                 </div>
                 <div className="flex gap-2">
                   <input

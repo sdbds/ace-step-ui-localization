@@ -22,11 +22,19 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+      // 定义关键 CSS 变量，确保 Tailwind 能读取
+      document.documentElement.style.setProperty('--color-primary', '#ec4899');
+      document.documentElement.style.setProperty('--bg-primary-dark', '#09090b');
+      document.documentElement.style.setProperty('--bg-secondary-dark', '#121214');
+      document.documentElement.style.setProperty('--bg-tertiary-dark', '#18181b');
+      document.documentElement.style.setProperty('--bg-hover-dark', '#27272a');
+
       tailwind.config = {
         darkMode: 'class',
         theme: {
           extend: {
             colors: {
+              /* Suno 主题色 */
               suno: {
                 DEFAULT: '#09090b',
                 sidebar: '#000000',
@@ -34,7 +42,49 @@
                 card: '#18181b',
                 hover: '#27272a',
                 border: '#27272a',
-              }
+              },
+
+              /* 语义化颜色 */
+              brand: {
+                DEFAULT: 'var(--color-primary)',
+                hover: 'var(--color-primary-hover)',
+                light: 'var(--color-primary-light)',
+              },
+
+              surface: {
+                primary: 'var(--bg-primary)',
+                secondary: 'var(--bg-secondary)',
+                tertiary: 'var(--bg-tertiary)',
+              },
+
+              'surface-dark': {
+                primary: 'var(--bg-primary-dark)',
+                secondary: 'var(--bg-secondary-dark)',
+                tertiary: 'var(--bg-tertiary-dark)',
+                hover: 'var(--bg-hover-dark)',
+              },
+
+              content: {
+                primary: 'var(--text-primary)',
+                secondary: 'var(--text-secondary)',
+                tertiary: 'var(--text-tertiary)',
+              },
+
+              'content-dark': {
+                primary: 'var(--text-primary-dark)',
+                secondary: 'var(--text-secondary-dark)',
+                tertiary: 'var(--text-tertiary-dark)',
+              },
+
+              border: {
+                primary: 'var(--border-primary)',
+                secondary: 'var(--border-secondary)',
+              },
+
+              'border-dark': {
+                primary: 'var(--border-primary-dark)',
+                secondary: 'var(--border-secondary-dark)',
+              },
             },
             fontFamily: {
               sans: ['Inter', 'sans-serif'],
@@ -67,183 +117,6 @@
 
       body {
         font-family: 'Inter', sans-serif;
-      }
-
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #d4d4d8;
-        border-radius: 3px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #a1a1aa;
-      }
-
-      /* Dark mode scrollbar */
-      .dark ::-webkit-scrollbar-thumb {
-        background: #3f3f46;
-      }
-      .dark ::-webkit-scrollbar-thumb:hover {
-        background: #52525b;
-      }
-
-      /* Hide scrollbar utility */
-      .scrollbar-hide {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-      .scrollbar-hide::-webkit-scrollbar {
-        display: none;
-      }
-
-      .gradient-text {
-        background: linear-gradient(to right, #f472b6, #a78bfa, #60a5fa);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
-
-      @keyframes music-bars {
-        0% { height: 20%; opacity: 0.5; }
-        50% { height: 100%; opacity: 1; }
-        100% { height: 20%; opacity: 0.5; }
-      }
-
-      .music-bar-anim {
-        animation: music-bars 1s ease-in-out infinite;
-      }
-
-      .mobile-only {
-        display: none;
-      }
-      .desktop-only {
-        display: block;
-      }
-      @media (max-width: 767px) {
-        .mobile-only {
-          display: block;
-        }
-        .desktop-only {
-          display: none;
-        }
-        .mobile-only-flex {
-          display: flex;
-        }
-        .mobile-only-inline {
-          display: inline;
-        }
-        .mobile-only-inline-flex {
-          display: inline-flex;
-        }
-      }
-
-      @keyframes slide-in-left {
-        from { transform: translateX(-100%); }
-        to { transform: translateX(0); }
-      }
-      @keyframes slide-out-left {
-        from { transform: translateX(0); }
-        to { transform: translateX(-100%); }
-      }
-      @keyframes slide-in-right {
-        from { transform: translateX(100%); }
-        to { transform: translateX(0); }
-      }
-      @keyframes slide-out-right {
-        from { transform: translateX(0); }
-        to { transform: translateX(100%); }
-      }
-      @keyframes fade-in {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-      @keyframes fade-out {
-        from { opacity: 1; }
-        to { opacity: 0; }
-      }
-      .drawer-slide-in-left {
-        animation: slide-in-left 0.3s ease-out forwards;
-      }
-      .drawer-slide-out-left {
-        animation: slide-out-left 0.3s ease-in forwards;
-      }
-      .drawer-slide-in-right {
-        animation: slide-in-right 0.3s ease-out forwards;
-      }
-      .drawer-slide-out-right {
-        animation: slide-out-right 0.3s ease-in forwards;
-      }
-      .drawer-backdrop-in {
-        animation: fade-in 0.3s ease-out forwards;
-      }
-      .drawer-backdrop-out {
-        animation: fade-out 0.3s ease-in forwards;
-      }
-
-      .backdrop-blur-mobile {
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-      }
-      .backdrop-blur-mobile-lg {
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-      }
-
-      .safe-area-inset-top {
-        padding-top: env(safe-area-inset-top, 0px);
-      }
-      .safe-area-inset-bottom {
-        padding-bottom: env(safe-area-inset-bottom, 0px);
-      }
-      .safe-area-inset-left {
-        padding-left: env(safe-area-inset-left, 0px);
-      }
-      .safe-area-inset-right {
-        padding-right: env(safe-area-inset-right, 0px);
-      }
-      .safe-area-inset-x {
-        padding-left: env(safe-area-inset-left, 0px);
-        padding-right: env(safe-area-inset-right, 0px);
-      }
-      .safe-area-inset-y {
-        padding-top: env(safe-area-inset-top, 0px);
-        padding-bottom: env(safe-area-inset-bottom, 0px);
-      }
-      .safe-area-inset-all {
-        padding-top: env(safe-area-inset-top, 0px);
-        padding-bottom: env(safe-area-inset-bottom, 0px);
-        padding-left: env(safe-area-inset-left, 0px);
-        padding-right: env(safe-area-inset-right, 0px);
-      }
-
-      .touch-none {
-        -webkit-tap-highlight-color: transparent;
-        touch-action: none;
-      }
-      .touch-pan-x {
-        touch-action: pan-x;
-      }
-      .touch-pan-y {
-        touch-action: pan-y;
-      }
-      .touch-manipulation {
-        touch-action: manipulation;
-      }
-      .tap-highlight-none {
-        -webkit-tap-highlight-color: transparent;
-      }
-      .scroll-touch {
-        -webkit-overflow-scrolling: touch;
-      }
-      .overscroll-none {
-        overscroll-behavior: none;
-      }
-      .overscroll-contain {
-        overscroll-behavior: contain;
       }
     </style>
   <script type="importmap">

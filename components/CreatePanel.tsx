@@ -1188,11 +1188,6 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         loraLoaded,
       });
     }
-
-    // Reset bulk count after generation
-    if (bulkCount > 1) {
-      setBulkCount(1);
-    }
   };
 
   return (
