@@ -139,7 +139,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
   const [saveEveryNEpochs, setSaveEveryNEpochs] = useState(200);
   const [trainingShift, setTrainingShift] = useState(3.0);
   const [trainingSeed, setTrainingSeed] = useState(42);
-  const [loraOutputDir, setLoraOutputDir] = useState('./lora_output');
+  const [loraOutputDir, setLoraOutputDir] = useState('./lokr_output');
   const [useFP8, setUseFP8] = useState(false);
   const [gradientCheckpointing, setGradientCheckpointing] = useState(false);
   const [trainingProgress, setTrainingProgress] = useState('');
@@ -438,16 +438,20 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
   }, [adapterType]);
 
   useEffect(() => {
-    if (isTraining) return;
-    setTrainingProgress('');
-    setTrainingLog('');
-    setTrainingStatus(null);
-    setTensorboardUrl(null);
-    setShowTensorboard(false);
-    setIframeKey((v) => v + 1);
-    setTrainingStartTime(null);
-    setCurrentEpoch(0);
-  }, [adapterType, isTraining]);
+    if (adapterType !== 'lora') return;
+    if (learningRate === 0.001) {
+      setLearningRate(3e-4);
+    }
+    if (trainEpochs === 500) {
+      setTrainEpochs(1000);
+    }
+    if (saveEveryNEpochs === 100) {
+      setSaveEveryNEpochs(200);
+    }
+    if (loraOutputDir === './lokr_output') {
+      setLoraOutputDir('./lora_output');
+    }
+  }, [adapterType]);
 
   const handleLoadJson = async () => {
     if (!token) return;
@@ -1325,6 +1329,9 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
                   <button
                     onClick={() => {
                       setAdapterType('lora');
+                      setLearningRate(3e-4);
+                      setTrainEpochs(1000);
+                      setSaveEveryNEpochs(200);
                       setLoraOutputDir('./lora_output');
                     }}
                     className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
@@ -1338,6 +1345,10 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
                   <button
                     onClick={() => {
                       setAdapterType('lokr');
+                      setLearningRate(0.001);
+                      setTrainEpochs(500);
+                      setSaveEveryNEpochs(100);
+                      setLokrWeightDecompose(true);
                       setLoraOutputDir('./lokr_output');
                     }}
                     className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
