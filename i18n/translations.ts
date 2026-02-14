@@ -1053,7 +1053,7 @@ export const translations = {
     min: '分钟',
 
     // CreatePanel - Misc
-    instructionDefault: '根据给定条件填充音频语义掩码：',
+    instructionDefault: 'Fill the audio semantic mask based on the given conditions:',
     untitled: '未命名',
     pleaseSignInToUseLoRA: '请登录以使用 LoRA',
     pleaseEnterLoRAPath: '请输入 LoRA 路径',
@@ -1824,7 +1824,7 @@ export const translations = {
     min: '分',
 
     // CreatePanel - Misc
-    instructionDefault: '与えられた条件に基づいて音声セマンティックマスクを埋めてください：',
+    instructionDefault: 'Fill the audio semantic mask based on the given conditions:',
     untitled: '無題',
     pleaseSignInToUseLoRA: 'LoRAを使用するにはログインしてください',
     pleaseEnterLoRAPath: 'LoRAパスを入力してください',
@@ -2612,7 +2612,7 @@ export const translations = {
     min: '분',
 
     // CreatePanel - Misc
-    instructionDefault: '주어진 조건에 따라 오디오 의미 마스크를 채우세요:',
+    instructionDefault: 'Fill the audio semantic mask based on the given conditions:',
     untitled: '무제',
     pleaseSignInToUseLoRA: 'LoRA를 사용하려면 로그인하세요',
     pleaseEnterLoRAPath: 'LoRA 경로를 입력하세요',

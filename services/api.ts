@@ -100,7 +100,7 @@ export interface Song {
   key_scale?: string;
   time_signature?: string;
   tags: string[];
-  is_public: boolean;
+  is_public?: boolean;
   like_count?: number;
   view_count?: number;
   user_id?: string;

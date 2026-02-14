@@ -29,6 +29,16 @@ type AppErrorBoundaryState = { error: Error | null };
 
 class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundaryState> {
   state: AppErrorBoundaryState = { error: null };
+  declare props: Readonly<AppErrorBoundaryProps>;
+  declare setState: (
+    state:
+      | AppErrorBoundaryState
+      | null
+      | ((
+          prevState: Readonly<AppErrorBoundaryState>,
+          props: Readonly<AppErrorBoundaryProps>
+        ) => AppErrorBoundaryState | null)
+  ) => void;
 
   static getDerivedStateFromError(error: Error): AppErrorBoundaryState {
     return { error };
