@@ -119,7 +119,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
   // LoKR Settings
   const [lokrLinearDim, setLokrLinearDim] = useState(64);
   const [lokrLinearAlpha, setLokrLinearAlpha] = useState(128);
-  const [lokrFactor, setLokrFactor] = useState(8);
+  const [lokrFactor, setLokrFactor] = useState(4);
   const [lokrDecomposeBoth, setLokrDecomposeBoth] = useState(false);
   const [lokrUseTucker, setLokrUseTucker] = useState(false);
   const [lokrUseScalar, setLokrUseScalar] = useState(false);
@@ -127,6 +127,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
 
   // Training State
   const [trainingTensorDir, setTrainingTensorDir] = useState('./datasets/preprocessed_tensors');
+  const [networkWeights, setNetworkWeights] = useState('');
   const [trainingDatasetInfo, setTrainingDatasetInfo] = useState('');
   const [loraRank, setLoraRank] = useState(64);
   const [loraAlpha, setLoraAlpha] = useState(128);
@@ -771,6 +772,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
           training_shift: trainingShift,
           training_seed: trainingSeed,
           output_dir: loraOutputDir,
+          network_weights: networkWeights.trim() || undefined,
           gradient_checkpointing: gradientCheckpointing,
         }, token);
       } else {
@@ -787,6 +789,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
           training_shift: trainingShift,
           training_seed: trainingSeed,
           lora_output_dir: loraOutputDir,
+          network_weights: networkWeights.trim() || undefined,
           use_fp8: useFP8,
           gradient_checkpointing: gradientCheckpointing,
         }, token);
@@ -1316,6 +1319,19 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
                     {trainingDatasetInfo}
                   </div>
                 )}
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    读取之前训练的权重（可选）
+                  </label>
+                  <input
+                    type="text"
+                    value={networkWeights}
+                    onChange={(e) => setNetworkWeights(e.target.value)}
+                    placeholder="./lora_output/checkpoints/epoch_xxx/adapter_model.safetensors"
+                    className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  />
+                </div>
               </div>
 
               {/* Adapter Type Selector */}
