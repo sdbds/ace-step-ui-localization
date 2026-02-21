@@ -393,10 +393,6 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
         if (status.training_log && status.training_log !== prevLog) {
           trainingLogRef.current = status.training_log;
           setTrainingLog(status.training_log);
-          // Refresh iframe when log changes (new training step)
-          if (showTensorboardRef.current) {
-            setIframeKey(prev => prev + 1);
-          }
         }
 
         // Update progress display
@@ -1322,13 +1318,13 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) =>
 
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    读取之前训练的权重（可选）
+                    {t('networkWeights')}
                   </label>
                   <input
                     type="text"
                     value={networkWeights}
                     onChange={(e) => setNetworkWeights(e.target.value)}
-                    placeholder="./lora_output/checkpoints/epoch_xxx/adapter_model.safetensors"
+                    placeholder={t('networkWeightsPlaceholder')}
                     className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-pink-500"
                   />
                 </div>

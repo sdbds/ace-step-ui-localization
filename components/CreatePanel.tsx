@@ -231,6 +231,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
 
   // Available models fetched from backend
   const [fetchedModels, setFetchedModels] = useState<{ name: string; is_active: boolean; is_preloaded: boolean }[]>([]);
+  const [backendUnavailable, setBackendUnavailable] = useState(false);
 
   // Fallback model list when backend is unavailable
   const availableModels = useMemo(() => {
@@ -630,6 +631,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         if (models.length > 0) {
           if (!isMountedRef.current) return false;
           setFetchedModels(models);
+          setBackendUnavailable(false);
           // Only sync to backend's active model on initial load
           // After that, respect user's selection
           if (isInitial) {
@@ -641,9 +643,11 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
           }
           return true;
         }
+      } else if (modelsRes.status === 503) {
+        if (isMountedRef.current) setBackendUnavailable(true);
       }
     } catch {
-      // ignore - will use fallback model list
+      if (isMountedRef.current) setBackendUnavailable(true);
     }
     return false;
   }, []);
@@ -1290,6 +1294,13 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               {/* Floating Model Menu */}
               {showModelMenu && availableModels.length > 0 && (
                 <div className="absolute top-full right-0 mt-1 w-72 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl z-50 overflow-hidden">
+                  {/* Backend unavailable hint */}
+                  {backendUnavailable && fetchedModels.length === 0 && (
+                    <div className="px-4 py-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 flex items-center gap-2">
+                      <span className="inline-block w-2 h-2 rounded-full bg-amber-400 dark:bg-amber-500 animate-pulse flex-shrink-0" />
+                      {t('backendNotStarted') || 'ACE-Step 后端暂未启动，使用默认模型列表'}
+                    </div>
+                  )}
                   <div className="max-h-96 overflow-y-auto custom-scrollbar">
                     {availableModels.map(model => (
                       <button
