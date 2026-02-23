@@ -1110,7 +1110,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   const handleGenerate = () => {
     const styleWithGender = (() => {
       if (!vocalGender) return style;
-      const genderHint = vocalGender === 'male' ? t('maleVocals') : t('femaleVocals');
+      const genderHint = vocalGender === 'male' ? 'Male vocals' : 'Female vocals';
       const trimmed = style.trim();
       return trimmed ? `${trimmed}\n${genderHint}` : genderHint;
     })();
