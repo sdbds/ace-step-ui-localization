@@ -18,6 +18,27 @@ import { getStorageProvider } from '../services/storage/factory.js';
 
 const router = Router();
 
+const __generate_filename = fileURLToPath(import.meta.url);
+const __generate_dirname = path.dirname(__generate_filename);
+const AUDIO_DIR = path.join(__generate_dirname, '../../public/audio');
+
+function resolveAudioPath(audioUrl: string): string {
+  if (audioUrl.startsWith('/audio/')) {
+    return path.join(AUDIO_DIR, audioUrl.replace('/audio/', ''));
+  }
+  if (audioUrl.startsWith('http')) {
+    try {
+      const parsed = new URL(audioUrl);
+      if (parsed.pathname.startsWith('/audio/')) {
+        return path.join(AUDIO_DIR, parsed.pathname.replace('/audio/', ''));
+      }
+    } catch {
+      // fall through
+    }
+  }
+  return audioUrl;
+}
+
 const audioUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 25 * 1024 * 1024 }, // 25MB max
@@ -339,6 +360,8 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
         instruction: params.instruction,
         audio_cover_strength: params.audioCoverStrength || 1.0,
         task_type: params.taskType || 'text2music',
+        ...(params.referenceAudioUrl ? { reference_audio_path: resolveAudioPath(params.referenceAudioUrl) } : {}),
+        ...(params.sourceAudioUrl ? { src_audio_path: resolveAudioPath(params.sourceAudioUrl) } : {}),
         use_adg: params.loraLoaded ? false : (params.useAdg || false),
         cfg_interval_start: params.cfgIntervalStart || 0.0,
         cfg_interval_end: params.cfgIntervalEnd || 1.0,
