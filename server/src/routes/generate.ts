@@ -16,6 +16,27 @@ import {
 import { config } from '../config/index.js';
 import { getStorageProvider } from '../services/storage/factory.js';
 
+const __filename_gen = fileURLToPath(import.meta.url);
+const __dirname_gen = path.dirname(__filename_gen);
+const AUDIO_DIR = path.join(__dirname_gen, '../../public/audio');
+
+function resolveAudioPath(audioUrl: string): string {
+  if (audioUrl.startsWith('/audio/')) {
+    return path.join(AUDIO_DIR, audioUrl.replace('/audio/', ''));
+  }
+  if (audioUrl.startsWith('http')) {
+    try {
+      const parsed = new URL(audioUrl);
+      if (parsed.pathname.startsWith('/audio/')) {
+        return path.join(AUDIO_DIR, parsed.pathname.replace('/audio/', ''));
+      }
+    } catch {
+      // fall through
+    }
+  }
+  return audioUrl;
+}
+
 const router = Router();
 
 const __generate_filename = fileURLToPath(import.meta.url);
@@ -127,6 +148,11 @@ interface GenerateBody {
   repaintingEnd?: number;
   instruction?: string;
   audioCoverStrength?: number;
+  coverNoiseStrength?: number;
+  enableNormalization?: boolean;
+  normalizationDb?: number;
+  latentShift?: number;
+  latentRescale?: number;
   taskType?: string;
   useAdg?: boolean;
   cfgIntervalStart?: number;
@@ -234,6 +260,11 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
       repaintingEnd,
       instruction,
       audioCoverStrength,
+      coverNoiseStrength,
+      enableNormalization,
+      normalizationDb,
+      latentShift,
+      latentRescale,
       taskType,
       useAdg,
       cfgIntervalStart,
@@ -303,6 +334,11 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
       repaintingEnd,
       instruction,
       audioCoverStrength,
+      coverNoiseStrength,
+      enableNormalization,
+      normalizationDb,
+      latentShift,
+      latentRescale,
       taskType,
       useAdg,
       cfgIntervalStart,
@@ -358,7 +394,14 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
         repainting_start: params.repaintingStart || 0.0,
         repainting_end: params.repaintingEnd,
         instruction: params.instruction,
+        ...(params.referenceAudioUrl ? { reference_audio_path: resolveAudioPath(params.referenceAudioUrl) } : {}),
+        ...(params.sourceAudioUrl ? { src_audio_path: resolveAudioPath(params.sourceAudioUrl) } : {}),
         audio_cover_strength: params.audioCoverStrength || 1.0,
+        cover_noise_strength: params.coverNoiseStrength || 0.0,
+        enable_normalization: params.enableNormalization !== undefined ? params.enableNormalization : true,
+        normalization_db: params.normalizationDb !== undefined ? params.normalizationDb : -1.0,
+        latent_shift: params.latentShift || 0.0,
+        latent_rescale: params.latentRescale || 1.0,
         task_type: params.taskType || 'text2music',
         ...(params.referenceAudioUrl ? { reference_audio_path: resolveAudioPath(params.referenceAudioUrl) } : {}),
         ...(params.sourceAudioUrl ? { src_audio_path: resolveAudioPath(params.sourceAudioUrl) } : {}),

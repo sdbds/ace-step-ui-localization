@@ -6,6 +6,8 @@ import { useI18n } from '../context/I18nContext';
 import { generateApi } from '../services/api';
 import { MAIN_STYLES, SUB_STYLES, ALL_STYLES } from '../data/genres';
 import { EditableSlider } from './EditableSlider';
+import { DualRangeSlider } from './DualRangeSlider';
+import { ToggleSwitch } from './ToggleSwitch';
 
 interface ReferenceTrack {
   id: string;
@@ -159,12 +161,12 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     const stored = localStorage.getItem('ace-bulkCount');
     return stored ? Number(stored) : 1;
   });
-  const [guidanceScale, setGuidanceScale] = useState(9.0);
+  const [guidanceScale, setGuidanceScale] = useState(7.0);
   const [randomSeed, setRandomSeed] = useState(true);
   const [seed, setSeed] = useState(-1);
   const [thinking, setThinking] = useState(false); // Default false for GPU compatibility
   const [audioFormat, setAudioFormat] = useState<'mp3' | 'flac'>('mp3');
-  const [inferenceSteps, setInferenceSteps] = useState(12);
+  const [inferenceSteps, setInferenceSteps] = useState(8);
   const [inferMethod, setInferMethod] = useState<'ode' | 'sde'>('ode');
   const [lmBackend, setLmBackend] = useState<'pt' | 'vllm'>('pt');
   const [lmModel, setLmModel] = useState(() => {
@@ -174,10 +176,10 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
 
   // LM Parameters (under Expert)
   const [showLmParams, setShowLmParams] = useState(false);
-  const [lmTemperature, setLmTemperature] = useState(0.8);
-  const [lmCfgScale, setLmCfgScale] = useState(2.2);
+  const [lmTemperature, setLmTemperature] = useState(0.85);
+  const [lmCfgScale, setLmCfgScale] = useState(2.0);
   const [lmTopK, setLmTopK] = useState(0);
-  const [lmTopP, setLmTopP] = useState(0.92);
+  const [lmTopP, setLmTopP] = useState(0.9);
   const [lmNegativePrompt, setLmNegativePrompt] = useState('NO USER INPUT');
 
   // Expert Parameters (now in Advanced section)
@@ -190,13 +192,18 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   const [repaintingEnd, setRepaintingEnd] = useState(-1);
   const [instruction, setInstruction] = useState(t('instructionDefault'));
   const [audioCoverStrength, setAudioCoverStrength] = useState(1.0);
+  const [coverNoiseStrength, setCoverNoiseStrength] = useState(0.15);
+  const [enableNormalization, setEnableNormalization] = useState(true);
+  const [normalizationDb, setNormalizationDb] = useState(-1.0);
+  const [latentShift, setLatentShift] = useState(0.0);
+  const [latentRescale, setLatentRescale] = useState(1.0);
   const [taskType, setTaskType] = useState('text2music');
   const [useAdg, setUseAdg] = useState(false);
   const [cfgIntervalStart, setCfgIntervalStart] = useState(0.0);
   const [cfgIntervalEnd, setCfgIntervalEnd] = useState(1.0);
   const [customTimesteps, setCustomTimesteps] = useState('');
   const [useCotMetas, setUseCotMetas] = useState(true);
-  const [useCotCaption, setUseCotCaption] = useState(true);
+  const [useCotCaption, setUseCotCaption] = useState(false);
   const [useCotLanguage, setUseCotLanguage] = useState(true);
   const [autogen, setAutogen] = useState(false);
   const [constrainedDecodingDebug, setConstrainedDecodingDebug] = useState(false);
@@ -1036,6 +1043,30 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     setTempAudioUrl('');
   };
 
+  // Clear incompatible audio state when switching task types to prevent
+  // stale values from leaking into the wrong generation path.
+  // (Matches upstream fix ace-step/ACE-Step-1.5#638)
+  const handleTaskTypeChange = (newTaskType: string) => {
+    const prev = taskType;
+    setTaskType(newTaskType);
+
+    // Switching TO text2music: clear source audio and reset cover params
+    if (newTaskType === 'text2music' && prev !== 'text2music') {
+      setSourceAudioUrl('');
+      setSourceAudioTitle('');
+      setCoverNoiseStrength(0.0);
+    }
+
+    // Switching AWAY from text2music: clear audio codes (only text2music uses them)
+    // and set recommended cover_noise_strength if still at default 0
+    if (prev === 'text2music' && newTaskType !== 'text2music') {
+      setAudioCodes('');
+      if (coverNoiseStrength === 0.0) {
+        setCoverNoiseStrength(0.15);
+      }
+    }
+  };
+
   const applyAudioTargetUrl = (target: 'reference' | 'source', url: string, title?: string) => {
     const derivedTitle = title ? title.replace(/\.[^/.]+$/, '') : getAudioLabel(url);
     if (target === 'reference') {
@@ -1165,6 +1196,11 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         repaintingEnd,
         instruction,
         audioCoverStrength,
+        coverNoiseStrength,
+        enableNormalization,
+        normalizationDb,
+        latentShift,
+        latentRescale,
         taskType,
         useAdg,
         cfgIntervalStart,
@@ -2389,7 +2425,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                   min={0}
                   max={2}
                   step={0.05}
-                  onChange={(e) => setLmTemperature(Number(e.target.value))}
+                  onChange={setLmTemperature}
                   formatDisplay={(val) => val.toFixed(2)}
                   helpText={t('higherMoreRandom')}
                   title={t('lmTemperatureTooltip')}
@@ -2459,56 +2495,105 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('taskTypeTooltip')}>{t('taskType')}</label>
-                <select
-                  value={taskType}
-                  onChange={(e) => setTaskType(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
-                >
-                  <option value="text2music">{t('textToMusic')}</option>
-                  <option value="audio2audio">{t('audio2audio')}</option>
-                  <option value="cover">{t('coverTask')}</option>
-                  <option value="repaint">{t('repaintTask')}</option>
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('audioCoverStrengthTooltip')}>{t('audioCoverStrength')}</label>
-                <input
-                  type="number"
-                  step="0.05"
-                  min="0"
-                  max="1"
-                  value={audioCoverStrength}
-                  onChange={(e) => setAudioCoverStrength(Number(e.target.value))}
-                  className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
-                />
-              </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('taskTypeTooltip')}>{t('taskType')}</label>
+              <select
+                value={taskType}
+                onChange={(e) => handleTaskTypeChange(e.target.value)}
+                className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
+              >
+                <option value="text2music">{t('textToMusic')}</option>
+                <option value="audio2audio">{t('audio2audio')}</option>
+                <option value="cover">{t('coverTask')}</option>
+                <option value="repaint">{t('repaintTask')}</option>
+              </select>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('repaintingStartTooltip')}>{t('repaintingStart')}</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={repaintingStart}
-                  onChange={(e) => setRepaintingStart(Number(e.target.value))}
-                  className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('repaintingEndTooltip')}>{t('repaintingEnd')}</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={repaintingEnd}
-                  onChange={(e) => setRepaintingEnd(Number(e.target.value))}
-                  className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
-                />
-              </div>
+              <EditableSlider
+                label={t('audioCoverStrength')}
+                value={audioCoverStrength}
+                min={0}
+                max={1}
+                step={0.01}
+                onChange={setAudioCoverStrength}
+                formatDisplay={(val) => val.toFixed(2)}
+                title={t('audioCoverStrengthTooltip')}
+              />
+              <EditableSlider
+                label={t('coverNoiseStrength')}
+                value={coverNoiseStrength}
+                min={0}
+                max={1}
+                step={0.01}
+                onChange={setCoverNoiseStrength}
+                formatDisplay={(val) => val.toFixed(2)}
+                title={t('coverNoiseStrengthTooltip')}
+              />
             </div>
+
+            <ToggleSwitch
+              label={t('enableNormalization')}
+              checked={enableNormalization}
+              onChange={setEnableNormalization}
+              title={t('enableNormalizationTooltip')}
+            />
+
+            {enableNormalization && (
+              <EditableSlider
+                label={t('normalizationDb')}
+                value={normalizationDb}
+                min={-10}
+                max={0}
+                step={0.1}
+                onChange={setNormalizationDb}
+                formatDisplay={(val) => `${val.toFixed(1)} dB`}
+                title={t('normalizationDbTooltip')}
+              />
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <EditableSlider
+                label={t('latentShift')}
+                value={latentShift}
+                min={-0.2}
+                max={0.2}
+                step={0.01}
+                onChange={setLatentShift}
+                formatDisplay={(val) => val.toFixed(2)}
+                title={t('latentShiftTooltip')}
+              />
+              <EditableSlider
+                label={t('latentRescale')}
+                value={latentRescale}
+                min={0.5}
+                max={1.5}
+                step={0.01}
+                onChange={setLatentRescale}
+                formatDisplay={(val) => val.toFixed(2)}
+                title={t('latentRescaleTooltip')}
+              />
+            </div>
+
+            <DualRangeSlider
+              label={t('repaintingRange')}
+              minValue={repaintingStart}
+              maxValue={repaintingEnd}
+              min={0}
+              max={referenceDuration || 240}
+              step={0.5}
+              onMinChange={setRepaintingStart}
+              onMaxChange={setRepaintingEnd}
+              formatDisplay={(val) => {
+                const m = Math.floor(val / 60);
+                const s = Math.floor(val % 60);
+                return `${m}:${String(s).padStart(2, '0')}`;
+              }}
+              allowAutoMax
+              autoMaxSentinel={-1}
+              autoMaxLabel={t('End')}
+              helpText={t('repaintingStartTooltip')}
+            />
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('instructionTooltip')}>{t('instruction')}</label>
@@ -2523,32 +2608,18 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               <h4 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">{t('guidance')}</h4>
               <p className="text-[11px] text-zinc-400 dark:text-zinc-500">{t('advancedCfgScheduling')}</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('cfgIntervalStartTooltip')}>{t('cfgIntervalStart')}</label>
-                <input
-                  type="number"
-                  step="0.05"
-                  min="0"
-                  max="1"
-                  value={cfgIntervalStart}
-                  onChange={(e) => setCfgIntervalStart(Number(e.target.value))}
-                  className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('cfgIntervalEndTooltip')}>{t('cfgIntervalEnd')}</label>
-                <input
-                  type="number"
-                  step="0.05"
-                  min="0"
-                  max="1"
-                  value={cfgIntervalEnd}
-                  onChange={(e) => setCfgIntervalEnd(Number(e.target.value))}
-                  className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
-                />
-              </div>
-            </div>
+            <DualRangeSlider
+              label={t('cfgInterval')}
+              minValue={cfgIntervalStart}
+              maxValue={cfgIntervalEnd}
+              min={0}
+              max={1}
+              step={0.05}
+              onMinChange={setCfgIntervalStart}
+              onMaxChange={setCfgIntervalEnd}
+              formatDisplay={(val) => val.toFixed(2)}
+              helpText={t('cfgIntervalStartTooltip')}
+            />
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('customTimestepsTooltip')}>{t('customTimesteps')}</label>
@@ -2562,26 +2633,25 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('scoreScaleTooltip')}>{t('scoreScale')}</label>
-                <input
-                  type="number"
-                  step="0.05"
-                  value={scoreScale}
-                  onChange={(e) => setScoreScale(Number(e.target.value))}
-                  className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('lmBatchChunkSizeTooltip')}>{t('lmBatchChunkSize')}</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={lmBatchChunkSize}
-                  onChange={(e) => setLmBatchChunkSize(Number(e.target.value))}
-                  className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
-                />
-              </div>
+              <EditableSlider
+                label={t('scoreScale')}
+                value={scoreScale}
+                min={0.01}
+                max={1}
+                step={0.05}
+                onChange={setScoreScale}
+                formatDisplay={(val) => val.toFixed(2)}
+                title={t('scoreScaleTooltip')}
+              />
+              <EditableSlider
+                label={t('lmBatchChunkSize')}
+                value={lmBatchChunkSize}
+                min={1}
+                max={32}
+                step={1}
+                onChange={setLmBatchChunkSize}
+                title={t('lmBatchChunkSizeTooltip')}
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -2606,50 +2676,17 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <label
-                className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400"
-                title={t('useAdgTooltip')}
-              >
-                <input type="checkbox" checked={useAdg} onChange={() => setUseAdg(!useAdg)} />
-                {t('useAdg')}
-              </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('allowLmBatchTooltip')}>
-                <input type="checkbox" checked={allowLmBatch} onChange={() => setAllowLmBatch(!allowLmBatch)} />
-                {t('allowLmBatch')}
-              </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('useCotMetadataTooltip')}>
-                <input type="checkbox" checked={useCotMetas} onChange={() => setUseCotMetas(!useCotMetas)} />
-                {t('useCotMetas')}
-              </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('useCotCaptionTooltip')}>
-                <input type="checkbox" checked={useCotCaption} onChange={() => setUseCotCaption(!useCotCaption)} />
-                {t('useCotCaption')}
-              </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('useCotLanguageTooltip')}>
-                <input type="checkbox" checked={useCotLanguage} onChange={() => setUseCotLanguage(!useCotLanguage)} />
-                {t('useCotLanguage')}
-              </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('autogenHint')}>
-                <input type="checkbox" checked={autogen} onChange={() => setAutogen(!autogen)} />
-                {t('autogen')}
-              </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('constrainedDecodingDebugTooltip')}>
-                <input type="checkbox" checked={constrainedDecodingDebug} onChange={() => setConstrainedDecodingDebug(!constrainedDecodingDebug)} />
-                {t('constrainedDecodingDebug')}
-              </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('formatCaptionTooltip')}>
-                <input type="checkbox" checked={isFormatCaption} onChange={() => setIsFormatCaption(!isFormatCaption)} />
-                {t('formatCaption')}
-              </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('getScoresTooltip')}>
-                <input type="checkbox" checked={getScores} onChange={() => setGetScores(!getScores)} />
-                {t('getScores')}
-              </label>
-              <label className="flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('getLrcTooltip')}>
-                <input type="checkbox" checked={getLrc} onChange={() => setGetLrc(!getLrc)} />
-                {t('getLrcLyrics')}
-              </label>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+              <ToggleSwitch label={t('useAdg')} checked={useAdg} onChange={setUseAdg} title={t('useAdgTooltip')} />
+              <ToggleSwitch label={t('allowLmBatch')} checked={allowLmBatch} onChange={setAllowLmBatch} title={t('allowLmBatchTooltip')} />
+              <ToggleSwitch label={t('useCotMetas')} checked={useCotMetas} onChange={setUseCotMetas} title={t('useCotMetadataTooltip')} />
+              <ToggleSwitch label={t('useCotCaption')} checked={useCotCaption} onChange={setUseCotCaption} title={t('useCotCaptionTooltip')} />
+              <ToggleSwitch label={t('useCotLanguage')} checked={useCotLanguage} onChange={setUseCotLanguage} title={t('useCotLanguageTooltip')} />
+              <ToggleSwitch label={t('autogen')} checked={autogen} onChange={setAutogen} title={t('autogenHint')} />
+              <ToggleSwitch label={t('constrainedDecodingDebug')} checked={constrainedDecodingDebug} onChange={setConstrainedDecodingDebug} title={t('constrainedDecodingDebugTooltip')} />
+              <ToggleSwitch label={t('formatCaption')} checked={isFormatCaption} onChange={setIsFormatCaption} title={t('formatCaptionTooltip')} />
+              <ToggleSwitch label={t('getScores')} checked={getScores} onChange={setGetScores} title={t('getScoresTooltip')} />
+              <ToggleSwitch label={t('getLrcLyrics')} checked={getLrc} onChange={setGetLrc} title={t('getLrcTooltip')} />
             </div>
           </div>
         )}
