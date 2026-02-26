@@ -273,6 +273,15 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     return modelId.includes('turbo');
   };
 
+  // Check if model is a pure base model (only base supports extract/lego/complete)
+  const isBaseModel = (modelId: string): boolean => {
+    return modelId.includes('base');
+  };
+
+  const isBaseOnlyTask = (task: string): boolean => {
+    return ['extract', 'lego', 'complete'].includes(task);
+  };
+
   // Genre selection state (cascading)
   // Two-level genre cascade states
   const [showGenreDropdown, setShowGenreDropdown] = useState(false);
@@ -1050,20 +1059,57 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     const prev = taskType;
     setTaskType(newTaskType);
 
-    // Switching TO text2music: clear source audio and reset cover params
-    if (newTaskType === 'text2music' && prev !== 'text2music') {
+    // Tasks that require source audio (matching Gradio: show_src_audio)
+    const srcAudioTasks = ['cover', 'repaint', 'extract', 'lego', 'complete'];
+
+    // Switching to a task that doesn't use source audio: clear it
+    if (!srcAudioTasks.includes(newTaskType) && srcAudioTasks.includes(prev)) {
       setSourceAudioUrl('');
       setSourceAudioTitle('');
+    }
+
+    // Switching TO text2music: also reset cover noise
+    if (newTaskType === 'text2music') {
       setCoverNoiseStrength(0.0);
     }
 
     // Switching AWAY from text2music: clear audio codes (only text2music uses them)
-    // and set recommended cover_noise_strength if still at default 0
     if (prev === 'text2music' && newTaskType !== 'text2music') {
       setAudioCodes('');
-      if (coverNoiseStrength === 0.0) {
-        setCoverNoiseStrength(0.15);
-      }
+    }
+
+    // Cover noise only for cover; set recommended default when entering cover
+    if (newTaskType === 'cover' && coverNoiseStrength === 0.0) {
+      setCoverNoiseStrength(0.15);
+    }
+    if (newTaskType !== 'cover') {
+      setCoverNoiseStrength(0.0);
+    }
+
+    // Reset cover strength for tasks that don't use it (matching Gradio: hidden for repaint/extract/lego)
+    if (['repaint', 'extract', 'lego'].includes(newTaskType)) {
+      setAudioCoverStrength(0.0);
+    }
+
+    // Restore cover strength default when switching to a task that uses it
+    if (!['repaint', 'extract', 'lego'].includes(newTaskType) && ['repaint', 'extract', 'lego'].includes(prev)) {
+      setAudioCoverStrength(1.0);
+    }
+
+    // Reset repaint range when leaving repaint/lego
+    if (!['repaint', 'lego'].includes(newTaskType) && ['repaint', 'lego'].includes(prev)) {
+      setRepaintingStart(0);
+      setRepaintingEnd(-1);
+    }
+
+    // Reset trackName when leaving extract/lego
+    if (!['extract', 'lego'].includes(newTaskType) && ['extract', 'lego'].includes(prev)) {
+      setTrackName('');
+    }
+
+    // Reset completeTrackClasses when leaving complete
+    if (newTaskType !== 'complete' && prev === 'complete') {
+      setCompleteTrackClasses('');
     }
   };
 
@@ -1348,6 +1394,10 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                           if (!isTurboModel(model.id)) {
                             setInferenceSteps(20);
                             setUseAdg(true);
+                          }
+                          // Fallback base-only tasks when switching to non-base model
+                          if (!isBaseModel(model.id) && isBaseOnlyTask(taskType)) {
+                            handleTaskTypeChange('text2music');
                           }
                           setShowModelMenu(false);
                         }}
@@ -2506,31 +2556,38 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 <option value="audio2audio">{t('audio2audio')}</option>
                 <option value="cover">{t('coverTask')}</option>
                 <option value="repaint">{t('repaintTask')}</option>
+                <option value="extract" disabled={!isBaseModel(selectedModel)}>{t('extractTask')}{!isBaseModel(selectedModel) ? ` (${t('requiresBaseModel')})` : ''}</option>
+                <option value="lego" disabled={!isBaseModel(selectedModel)}>{t('legoTask')}{!isBaseModel(selectedModel) ? ` (${t('requiresBaseModel')})` : ''}</option>
+                <option value="complete" disabled={!isBaseModel(selectedModel)}>{t('completeTask')}{!isBaseModel(selectedModel) ? ` (${t('requiresBaseModel')})` : ''}</option>
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <EditableSlider
-                label={t('audioCoverStrength')}
-                value={audioCoverStrength}
-                min={0}
-                max={1}
-                step={0.01}
-                onChange={setAudioCoverStrength}
-                formatDisplay={(val) => val.toFixed(2)}
-                title={t('audioCoverStrengthTooltip')}
-              />
-              <EditableSlider
-                label={t('coverNoiseStrength')}
-                value={coverNoiseStrength}
-                min={0}
-                max={1}
-                step={0.01}
-                onChange={setCoverNoiseStrength}
-                formatDisplay={(val) => val.toFixed(2)}
-                title={t('coverNoiseStrengthTooltip')}
-              />
-            </div>
+            {!['repaint', 'extract', 'lego'].includes(taskType) && (
+              <div className={`grid ${taskType === 'cover' ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
+                <EditableSlider
+                  label={t('audioCoverStrength')}
+                  value={audioCoverStrength}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  onChange={setAudioCoverStrength}
+                  formatDisplay={(val) => val.toFixed(2)}
+                  title={t('audioCoverStrengthTooltip')}
+                />
+                {taskType === 'cover' && (
+                  <EditableSlider
+                    label={t('coverNoiseStrength')}
+                    value={coverNoiseStrength}
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    onChange={setCoverNoiseStrength}
+                    formatDisplay={(val) => val.toFixed(2)}
+                    title={t('coverNoiseStrengthTooltip')}
+                  />
+                )}
+              </div>
+            )}
 
             <ToggleSwitch
               label={t('enableNormalization')}
@@ -2575,25 +2632,27 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               />
             </div>
 
-            <DualRangeSlider
-              label={t('repaintingRange')}
-              minValue={repaintingStart}
-              maxValue={repaintingEnd}
-              min={0}
-              max={referenceDuration || 240}
-              step={0.5}
-              onMinChange={setRepaintingStart}
-              onMaxChange={setRepaintingEnd}
-              formatDisplay={(val) => {
-                const m = Math.floor(val / 60);
-                const s = Math.floor(val % 60);
-                return `${m}:${String(s).padStart(2, '0')}`;
-              }}
-              allowAutoMax
-              autoMaxSentinel={-1}
-              autoMaxLabel={t('End')}
-              helpText={t('repaintingStartTooltip')}
-            />
+            {['repaint', 'lego'].includes(taskType) && (
+              <DualRangeSlider
+                label={t('repaintingRange')}
+                minValue={repaintingStart}
+                maxValue={repaintingEnd}
+                min={0}
+                max={referenceDuration || 240}
+                step={0.5}
+                onMinChange={setRepaintingStart}
+                onMaxChange={setRepaintingEnd}
+                formatDisplay={(val) => {
+                  const m = Math.floor(val / 60);
+                  const s = Math.floor(val % 60);
+                  return `${m}:${String(s).padStart(2, '0')}`;
+                }}
+                allowAutoMax
+                autoMaxSentinel={-1}
+                autoMaxLabel={t('End')}
+                helpText={t('repaintingStartTooltip')}
+              />
+            )}
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('instructionTooltip')}>{t('instruction')}</label>
@@ -2654,27 +2713,31 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('trackName')}</label>
-              <input
-                type="text"
-                value={trackName}
-                onChange={(e) => setTrackName(e.target.value)}
-                placeholder={t('optionalTrackName')}
-                className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
-              />
-            </div>
+            {['extract', 'lego'].includes(taskType) && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('trackName')}</label>
+                <input
+                  type="text"
+                  value={trackName}
+                  onChange={(e) => setTrackName(e.target.value)}
+                  placeholder={t('optionalTrackName')}
+                  className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
+                />
+              </div>
+            )}
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('completeTrackClasses')}</label>
-              <input
-                type="text"
-                value={completeTrackClasses}
-                onChange={(e) => setCompleteTrackClasses(e.target.value)}
-                placeholder={t('trackClassesPlaceholder')}
-                className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
-              />
-            </div>
+            {taskType === 'complete' && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('completeTrackClasses')}</label>
+                <input
+                  type="text"
+                  value={completeTrackClasses}
+                  onChange={(e) => setCompleteTrackClasses(e.target.value)}
+                  placeholder={t('trackClassesPlaceholder')}
+                  className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none"
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
               <ToggleSwitch label={t('useAdg')} checked={useAdg} onChange={setUseAdg} title={t('useAdgTooltip')} />

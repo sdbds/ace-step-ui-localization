@@ -447,6 +447,10 @@ export const translations = {
     audio2audio: 'Audio → Audio',
     coverTask: 'Cover',
     repaintTask: 'Repaint',
+    extractTask: 'Extract',
+    legoTask: 'Lego',
+    completeTask: 'Complete',
+    requiresBaseModel: 'Requires Base model',
 
     // Search Page
     searchSongsPlaceholder: 'Search for songs, playlists, creators, or genres',
@@ -1246,6 +1250,10 @@ export const translations = {
     audio2audio: '音频 → 音频',
     coverTask: '翻唱',
     repaintTask: '重绘',
+    extractTask: '提取音轨',
+    legoTask: '乐高拼接',
+    completeTask: '自动补全',
+    requiresBaseModel: '需要 Base 模型',
 
     // Search Page
     searchSongsPlaceholder: '搜索歌曲、播放列表、创作者或风格',
@@ -2071,6 +2079,10 @@ export const translations = {
     audio2audio: 'オーディオ → オーディオ',
     coverTask: 'カバー',
     repaintTask: 'リペイント',
+    extractTask: '抽出',
+    legoTask: 'レゴ',
+    completeTask: '補完',
+    requiresBaseModel: 'Baseモデルが必要',
 
     // Search Page
     searchSongsPlaceholder: '曲、プレイリスト、クリエイター、スタイルを検索',
@@ -2882,6 +2894,10 @@ export const translations = {
     audio2audio: '오디오 → 오디오',
     coverTask: '커버',
     repaintTask: '리페인트',
+    extractTask: '추출',
+    legoTask: '레고',
+    completeTask: '완성',
+    requiresBaseModel: 'Base 모델 필요',
 
     // Search Page
     searchSongsPlaceholder: '곡, 재생목록, 제작자 또는 스타일 검색',
