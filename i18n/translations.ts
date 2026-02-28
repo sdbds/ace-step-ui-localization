@@ -114,8 +114,8 @@ export const translations = {
     loraScaleDescription: 'Adjust the influence strength of the LoRA model',
 
     // CreatePanel - Audio
-    reference: 'Reference',
-    cover: 'Cover',
+    reference: 'Style Ref',
+    cover: 'Content Ref',
     fromLibrary: 'From library',
     upload: 'Upload',
 
@@ -301,6 +301,7 @@ export const translations = {
     loraOperationFailed: 'LoRA operation failed',
     failedToUnloadLoRA: 'Failed to unload LoRA',
     pleaseSignInToUploadAudio: 'Please sign in to upload audio',
+    contentRefRequiredForTask: 'This task requires content reference audio. Please upload one.',
     uploadFailed: 'Upload failed',
     formatFailed: 'Format failed',
     formatFailedLLMNotInitialized: 'Format failed. Make sure the LLM is initialized.',
@@ -315,10 +316,10 @@ export const translations = {
     // CreatePanel - Drag & Drop
     dropToUseAudio: 'Drop to use audio',
     dropToUpload: 'Drop to upload',
-    usingAsReference: 'Using as Reference',
-    usingAsCover: 'Using as Cover',
-    uploadingAsReference: 'Uploading as Reference',
-    uploadingAsCover: 'Uploading as Cover',
+    usingAsReference: 'Using as Style Reference',
+    usingAsCover: 'Using as Content Reference',
+    uploadingAsReference: 'Uploading as Style Reference',
+    uploadingAsCover: 'Uploading as Content Reference',
 
     // CreatePanel - Vocal Gender
     vocalGender: 'Vocal Gender',
@@ -531,8 +532,8 @@ export const translations = {
     copied: 'Copied!',
     copyAllTags: 'Copy all tags',
     sources: 'Sources',
-    referenceAudio: 'Reference',
-    coverAudio: 'Cover',
+    referenceAudio: 'Style Ref',
+    coverAudio: 'Content Ref',
     instrumentalTrack: 'Instrumental Track',
     noLyricsGenerated: 'No lyrics generated',
     video: 'Video',
@@ -593,10 +594,10 @@ export const translations = {
     emailBody: 'Hey!\n\nI created this AI-generated song and thought you\'d love it:\n\n"{title}" by {creator}\n{style}\n\nListen here: {url}\n\nMade with ACE-Step UI - free and open source local AI music generation!',
 
     // Reference Modal
-    referenceModalTitle: 'Reference',
-    coverModalTitle: 'Cover',
-    referenceModalDescription: 'Create songs inspired by a reference track',
-    coverModalDescription: 'Transform an existing track into a new version',
+    referenceModalTitle: 'Style Reference',
+    coverModalTitle: 'Content Reference',
+    referenceModalDescription: 'Upload a style reference track for tone/genre guidance',
+    coverModalDescription: 'Upload content audio to remix, repaint, or transform',
     uploadAudio: 'Upload audio',
     uploadingAudio: 'Uploading...',
     audioFormats: 'MP3, WAV, FLAC',
@@ -909,8 +910,8 @@ export const translations = {
     loraScaleDescription: '调整 LoRA 模型的影响强度',
 
     // CreatePanel - Audio
-    reference: '参考',
-    cover: '翻唱',
+    reference: '风格参考',
+    cover: '内容参考',
     fromLibrary: '从库中选择',
     upload: '上传',
 
@@ -1096,6 +1097,7 @@ export const translations = {
     loraOperationFailed: 'LoRA 操作失败',
     failedToUnloadLoRA: '卸载 LoRA 失败',
     pleaseSignInToUploadAudio: '请登录以上传音频',
+    contentRefRequiredForTask: '该任务需要内容参考音频，请先上传。',
     uploadFailed: '上传失败',
     formatFailed: '格式化失败',
     formatFailedLLMNotInitialized: '格式化失败。请确保 LLM 已初始化。',
@@ -1110,10 +1112,10 @@ export const translations = {
     // CreatePanel - Drag & Drop
     dropToUseAudio: '拖放以使用音频',
     dropToUpload: '拖放以上传',
-    usingAsReference: '用作参考',
-    usingAsCover: '用作翻唱',
-    uploadingAsReference: '上传为参考',
-    uploadingAsCover: '上传为翻唱',
+    usingAsReference: '用作风格参考',
+    usingAsCover: '用作内容参考',
+    uploadingAsReference: '上传为风格参考',
+    uploadingAsCover: '上传为内容参考',
 
     // CreatePanel - Vocal Gender
     vocalGender: '人声性别',
@@ -1334,8 +1336,8 @@ export const translations = {
     copied: '已复制！',
     copyAllTags: '复制所有标签',
     sources: '来源',
-    referenceAudio: '参考',
-    coverAudio: '翻唱',
+    referenceAudio: '风格参考',
+    coverAudio: '内容参考',
     instrumentalTrack: '纯音乐',
     noLyricsGenerated: '未生成歌词',
     video: '视频',
@@ -1396,10 +1398,10 @@ export const translations = {
     emailBody: '嘿！\n\n我创作了这首AI生成的歌曲，觉得你会喜欢：\n\n《{title}》- {creator}\n{style}\n\n点击收听：{url}\n\n使用 ACE-Step UI 制作 - 免费开源的本地AI音乐生成工具！',
 
     // Reference Modal
-    referenceModalTitle: '参考音频',
-    coverModalTitle: '翻唱音频',
-    referenceModalDescription: '基于参考音轨创作歌曲',
-    coverModalDescription: '将现有音轨转换为新版本',
+    referenceModalTitle: '风格参考',
+    coverModalTitle: '内容参考',
+    referenceModalDescription: '上传风格参考音轨，用于音色/风格引导',
+    coverModalDescription: '上传内容音频，用于翻唱、重绘或变换',
     uploadAudio: '上传音频',
     uploadingAudio: '上传中...',
     audioFormats: 'MP3、WAV、FLAC',
@@ -1712,8 +1714,8 @@ export const translations = {
     loraScaleDescription: 'LoRA モデルの影響強度を調整',
 
     // CreatePanel - Audio
-    reference: '参照',
-    cover: 'カバー',
+    reference: 'スタイル参照',
+    cover: 'コンテンツ参照',
     fromLibrary: 'ライブラリから',
     upload: 'アップロード',
 
@@ -1893,6 +1895,7 @@ export const translations = {
     loraOperationFailed: 'LoRA操作に失敗しました',
     failedToUnloadLoRA: 'LoRAのアンロードに失敗しました',
     pleaseSignInToUploadAudio: '音声をアップロードするにはログインしてください',
+    contentRefRequiredForTask: 'このタスクにはコンテンツ参照オーディオが必要です。アップロードしてください。',
     uploadFailed: 'アップロードに失敗しました',
     formatFailed: 'フォーマットに失敗しました',
     formatFailedLLMNotInitialized: 'フォーマットに失敗しました。LLMが初期化されていることを確認してください。',
@@ -1907,10 +1910,10 @@ export const translations = {
     // CreatePanel - Drag & Drop
     dropToUseAudio: 'ドロップしてオーディオを使用',
     dropToUpload: 'ドロップしてアップロード',
-    usingAsReference: '参照として使用',
-    usingAsCover: 'カバーとして使用',
-    uploadingAsReference: '参照としてアップロード',
-    uploadingAsCover: 'カバーとしてアップロード',
+    usingAsReference: 'スタイル参照として使用',
+    usingAsCover: 'コンテンツ参照として使用',
+    uploadingAsReference: 'スタイル参照としてアップロード',
+    uploadingAsCover: 'コンテンツ参照としてアップロード',
 
     // CreatePanel - Vocal Gender
     vocalGender: 'ボーカルの性別',
@@ -2210,10 +2213,10 @@ export const translations = {
     emailBody: 'こんにちは！\n\n私がこのAI生成の曲を作りました。気に入ってもらえると思います：\n\n「{title}」by {creator}\n{style}\n\nここで聴いてください：{url}\n\nACE-Step UIで作成 - 無料でオープンソースのローカルAI音楽生成！',
 
     // Reference Modal
-    referenceModalTitle: 'リファレンス',
-    coverModalTitle: 'カバー',
-    referenceModalDescription: 'リファレンストラックに触発された曲を作成',
-    coverModalDescription: '既存のトラックを新しいバージョンに変換',
+    referenceModalTitle: 'スタイル参照',
+    coverModalTitle: 'コンテンツ参照',
+    referenceModalDescription: 'スタイル参照トラックをアップロード（音色/ジャンルガイド用）',
+    coverModalDescription: 'コンテンツ音声をアップロード（リミックス、リペイント、変換用）',
     uploadAudio: 'オーディオをアップロード',
     uploadingAudio: 'アップロード中...',
     audioFormats: 'MP3、WAV、FLAC',
@@ -2527,8 +2530,8 @@ export const translations = {
     loraScaleDescription: 'LoRA 모델의 영향 강도 조절',
 
     // CreatePanel - Audio
-    reference: '참조',
-    cover: '커버',
+    reference: '스타일 참조',
+    cover: '콘텐츠 참조',
     fromLibrary: '라이브러리에서',
     upload: '업로드',
 
@@ -2708,6 +2711,7 @@ export const translations = {
     loraOperationFailed: 'LoRA 작업 실패',
     failedToUnloadLoRA: 'LoRA 언로드 실패',
     pleaseSignInToUploadAudio: '오디오를 업로드하려면 로그인하세요',
+    contentRefRequiredForTask: '이 작업에는 콘텐츠 참조 오디오가 필요합니다. 업로드해 주세요.',
     uploadFailed: '업로드 실패',
     formatFailed: '포맷 실패',
     formatFailedLLMNotInitialized: '포맷 실패. LLM이 초기화되었는지 확인하세요.',
@@ -2722,10 +2726,10 @@ export const translations = {
     // CreatePanel - Drag & Drop
     dropToUseAudio: '드롭하여 오디오 사용',
     dropToUpload: '드롭하여 업로드',
-    usingAsReference: '참조로 사용',
-    usingAsCover: '커버로 사용',
-    uploadingAsReference: '참조로 업로드',
-    uploadingAsCover: '커버로 업로드',
+    usingAsReference: '스타일 참조로 사용',
+    usingAsCover: '콘텐츠 참조로 사용',
+    uploadingAsReference: '스타일 참조로 업로드',
+    uploadingAsCover: '콘텐츠 참조로 업로드',
 
     // CreatePanel - Vocal Gender
     vocalGender: '보컬 성별',
@@ -3025,10 +3029,10 @@ export const translations = {
     emailBody: '안녕하세요!\n\n제가 만든 이 AI 생성 곡을 들어보세요. 마음에 드실 거예요:\n\n"{title}" - {creator}\n{style}\n\n여기서 들으세요: {url}\n\nACE-Step UI로 제작 - 무료 오픈 소스 로컬 AI 음악 생성!',
 
     // Reference Modal
-    referenceModalTitle: '참조 음악',
-    coverModalTitle: '커버 음악',
-    referenceModalDescription: '참조 트랙에서 영감을 받은 곡 만들기',
-    coverModalDescription: '기존 트랙을 새로운 버전으로 변환',
+    referenceModalTitle: '스타일 참조',
+    coverModalTitle: '콘텐츠 참조',
+    referenceModalDescription: '스타일 참조 트랙 업로드 (음색/장르 가이드용)',
+    coverModalDescription: '콘텐츠 오디오 업로드 (리믹스, 리페인트, 변환용)',
     uploadAudio: '오디오 업로드',
     uploadingAudio: '업로드 중...',
     audioFormats: 'MP3, WAV, FLAC',

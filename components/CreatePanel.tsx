@@ -1086,14 +1086,17 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
       setCoverNoiseStrength(0.0);
     }
 
-    // Reset cover strength for tasks that don't use it (matching Gradio: hidden for repaint/extract)
-    if (['extract'].includes(newTaskType)) {
-      setAudioCoverStrength(0.0);
-    }
-
-    // Restore cover strength default when switching to a task that uses it
-    if (!['extract'].includes(newTaskType) && ['extract'].includes(prev)) {
-      setAudioCoverStrength(1.0);
+    // Extract/Lego: clear reference audio (not used) and prompt for content reference if missing
+    if (['extract', 'lego'].includes(newTaskType)) {
+      setReferenceAudioUrl('');
+      setReferenceAudioTitle('');
+      setReferencePlaying(false);
+      setReferenceTime(0);
+      setReferenceDuration(0);
+      if (!sourceAudioUrl) {
+        setUploadError(t('contentRefRequiredForTask'));
+        setAudioTab('source');
+      }
     }
 
     // Reset repaint range when leaving repaint/lego
@@ -2561,8 +2564,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               </select>
             </div>
 
-            {!['text2music', 'extract'].includes(taskType) && (
-              <EditableSlider
+            <EditableSlider
                 label={t('audioCoverStrength')}
                 value={audioCoverStrength}
                 min={0}
@@ -2571,9 +2573,9 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 onChange={setAudioCoverStrength}
                 formatDisplay={(val) => val.toFixed(2)}
                 title={t('audioCoverStrengthTooltip')}
-              />
-            )}
-            {!['text2music', 'repaint', 'extract'].includes(taskType) && (
+            />
+
+            {taskType === 'cover' && (
               <EditableSlider
                 label={t('coverNoiseStrength')}
                 value={coverNoiseStrength}
