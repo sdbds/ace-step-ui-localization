@@ -376,7 +376,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
         ...(params.referenceAudioUrl ? { reference_audio_path: resolveAudioPath(params.referenceAudioUrl) } : {}),
         ...(params.sourceAudioUrl ? { src_audio_path: resolveAudioPath(params.sourceAudioUrl) } : {}),
         audio_cover_strength: params.audioCoverStrength ?? 1.0,
-        cover_noise_strength: params.coverNoiseStrength ?? 0.0,
+        cover_noise_strength: params.taskType === 'cover' ? (params.coverNoiseStrength ?? 0.0) : 0.0,
         enable_normalization: params.enableNormalization !== undefined ? params.enableNormalization : true,
         normalization_db: params.normalizationDb !== undefined ? params.normalizationDb : -1.0,
         latent_shift: params.latentShift || 0.0,
