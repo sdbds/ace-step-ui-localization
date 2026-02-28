@@ -1086,13 +1086,13 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
       setCoverNoiseStrength(0.0);
     }
 
-    // Reset cover strength for tasks that don't use it (matching Gradio: hidden for repaint/extract/lego)
-    if (['repaint', 'extract', 'lego'].includes(newTaskType)) {
+    // Reset cover strength for tasks that don't use it (matching Gradio: hidden for repaint/extract)
+    if (['extract'].includes(newTaskType)) {
       setAudioCoverStrength(0.0);
     }
 
     // Restore cover strength default when switching to a task that uses it
-    if (!['repaint', 'extract', 'lego'].includes(newTaskType) && ['repaint', 'extract', 'lego'].includes(prev)) {
+    if (!['extract'].includes(newTaskType) && ['extract'].includes(prev)) {
       setAudioCoverStrength(1.0);
     }
 
@@ -2553,7 +2553,6 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
               >
                 <option value="text2music">{t('textToMusic')}</option>
-                <option value="audio2audio">{t('audio2audio')}</option>
                 <option value="cover">{t('coverTask')}</option>
                 <option value="repaint">{t('repaintTask')}</option>
                 <option value="extract" disabled={!isBaseModel(selectedModel)}>{t('extractTask')}{!isBaseModel(selectedModel) ? ` (${t('requiresBaseModel')})` : ''}</option>
@@ -2562,31 +2561,29 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               </select>
             </div>
 
-            {!['repaint', 'extract', 'lego'].includes(taskType) && (
-              <div className={`grid ${taskType === 'cover' ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
-                <EditableSlider
-                  label={t('audioCoverStrength')}
-                  value={audioCoverStrength}
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  onChange={setAudioCoverStrength}
-                  formatDisplay={(val) => val.toFixed(2)}
-                  title={t('audioCoverStrengthTooltip')}
-                />
-                {taskType === 'cover' && (
-                  <EditableSlider
-                    label={t('coverNoiseStrength')}
-                    value={coverNoiseStrength}
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    onChange={setCoverNoiseStrength}
-                    formatDisplay={(val) => val.toFixed(2)}
-                    title={t('coverNoiseStrengthTooltip')}
-                  />
-                )}
-              </div>
+            {!['text2music', 'extract'].includes(taskType) && (
+              <EditableSlider
+                label={t('audioCoverStrength')}
+                value={audioCoverStrength}
+                min={0}
+                max={1}
+                step={0.01}
+                onChange={setAudioCoverStrength}
+                formatDisplay={(val) => val.toFixed(2)}
+                title={t('audioCoverStrengthTooltip')}
+              />
+            )}
+            {!['text2music', 'repaint', 'extract'].includes(taskType) && (
+              <EditableSlider
+                label={t('coverNoiseStrength')}
+                value={coverNoiseStrength}
+                min={0}
+                max={1}
+                step={0.01}
+                onChange={setCoverNoiseStrength}
+                formatDisplay={(val) => val.toFixed(2)}
+                title={t('coverNoiseStrengthTooltip')}
+              />
             )}
 
             <ToggleSwitch
