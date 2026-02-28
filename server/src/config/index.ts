@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename);
 
 export const config = {
   port: parseInt(process.env.PORT || '3001', 10),
+  host: process.env.HOST || '127.0.0.1',
   nodeEnv: process.env.NODE_ENV || 'development',
 
   // SQLite database
@@ -18,7 +19,7 @@ export const config = {
 
   // ACE-Step API (local)
   acestep: {
-    apiUrl: process.env.ACESTEP_API_URL || 'http://localhost:8001',
+    apiUrl: process.env.ACESTEP_API_URL || `http://${process.env.ACESTEP_API_HOST || '127.0.0.1'}:${process.env.ACESTEP_API_PORT || '8001'}`,
   },
 
   // Pexels (optional - for video backgrounds)
@@ -27,7 +28,7 @@ export const config = {
   },
 
   // Frontend URL
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
 
   // Storage (local only)
   storage: {
