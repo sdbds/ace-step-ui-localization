@@ -88,6 +88,7 @@ export interface GenerationParams {
   lmTopK: number;
   lmTopP: number;
   lmNegativePrompt: string;
+  lmRepetitionPenalty?: number;
   lmBackend?: 'pt' | 'vllm';
   lmModel?: string;
 
@@ -115,6 +116,7 @@ export interface GenerationParams {
   useCotCaption?: boolean;
   useCotLanguage?: boolean;
   autogen?: boolean;
+  constrainedDecoding?: boolean;
   constrainedDecodingDebug?: boolean;
   allowLmBatch?: boolean;
   getScores?: boolean;
@@ -124,6 +126,7 @@ export interface GenerationParams {
   trackName?: string;
   completeTrackClasses?: string[];
   isFormatCaption?: boolean;
+  loraLoaded?: boolean;
 }
 
 export interface PlayerState {

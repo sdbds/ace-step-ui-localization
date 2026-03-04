@@ -19,20 +19,28 @@ import { getStorageProvider } from '../services/storage/factory.js';
 const __filename_gen = fileURLToPath(import.meta.url);
 const __dirname_gen = path.dirname(__filename_gen);
 const AUDIO_DIR = path.join(__dirname_gen, '../../public/audio');
+// Project root: ace-step-ui/server/src/routes/ → ../../../../
+const PROJECT_ROOT = path.resolve(__dirname_gen, '../../../..');
 
 function resolveAudioPath(audioUrl: string): string {
+  // Convert /audio/ URLs to relative paths from project root.
+  // Backend validate_audio_path rejects absolute paths outside temp dir.
+  let pathname = '';
   if (audioUrl.startsWith('/audio/')) {
-    return path.join(AUDIO_DIR, audioUrl.replace('/audio/', ''));
-  }
-  if (audioUrl.startsWith('http')) {
+    pathname = audioUrl.replace('/audio/', '');
+  } else if (audioUrl.startsWith('http')) {
     try {
       const parsed = new URL(audioUrl);
       if (parsed.pathname.startsWith('/audio/')) {
-        return path.join(AUDIO_DIR, parsed.pathname.replace('/audio/', ''));
+        pathname = parsed.pathname.replace('/audio/', '');
       }
     } catch {
       // fall through
     }
+  }
+  if (pathname) {
+    const absPath = path.join(AUDIO_DIR, pathname);
+    return path.relative(PROJECT_ROOT, absPath);
   }
   return audioUrl;
 }
@@ -114,6 +122,7 @@ interface GenerateBody {
   lmTopK?: number;
   lmTopP?: number;
   lmNegativePrompt?: string;
+  lmRepetitionPenalty?: number;
   lmBackend?: 'pt' | 'vllm';
   lmModel?: string;
 
@@ -128,6 +137,7 @@ interface GenerateBody {
   instruction?: string;
   audioCoverStrength?: number;
   coverNoiseStrength?: number;
+  constrainedDecoding?: boolean;
   enableNormalization?: boolean;
   normalizationDb?: number;
   latentShift?: number;
@@ -253,7 +263,9 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
       useCotCaption,
       useCotLanguage,
       autogen,
+      constrainedDecoding,
       constrainedDecodingDebug,
+      lmRepetitionPenalty,
       allowLmBatch,
       getScores,
       getLrc,
@@ -327,7 +339,9 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
       useCotCaption,
       useCotLanguage,
       autogen,
+      constrainedDecoding,
       constrainedDecodingDebug,
+      lmRepetitionPenalty,
       allowLmBatch,
       getScores,
       getLrc,
@@ -348,66 +362,72 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response
     );
 
     // Call 8001 API to start generation
+    const releaseTaskBody = {
+      prompt: params.customMode ? params.style : (params.songDescription || params.style),
+      lyrics: params.instrumental ? '' : (params.lyrics || ''),
+      thinking: params.loraLoaded ? false : (params.thinking || false),
+      dit_model: params.ditModel,
+      bpm: params.bpm,
+      key_scale: params.keyScale,
+      time_signature: params.timeSignature,
+      audio_duration: params.duration,
+      vocal_language: params.vocalLanguage || 'en',
+      inference_steps: params.inferenceSteps || 8,
+      guidance_scale: params.guidanceScale || 10.0,
+      use_random_seed: params.randomSeed !== false,
+      seed: params.seed || -1,
+      batch_size: params.batchSize || 1,
+      audio_code_string: params.audioCodes,
+      repainting_start: params.repaintingStart || 0.0,
+      repainting_end: params.repaintingEnd,
+      instruction: params.instruction,
+      ...(params.referenceAudioUrl ? { reference_audio_path: resolveAudioPath(params.referenceAudioUrl) } : {}),
+      ...(params.sourceAudioUrl ? { src_audio_path: resolveAudioPath(params.sourceAudioUrl) } : {}),
+      audio_cover_strength: params.audioCoverStrength ?? 1.0,
+      cover_noise_strength: params.taskType === 'cover' ? (params.coverNoiseStrength ?? 0.0) : 0.0,
+      enable_normalization: params.enableNormalization !== undefined ? params.enableNormalization : true,
+      normalization_db: params.normalizationDb !== undefined ? params.normalizationDb : -1.0,
+      latent_shift: params.latentShift || 0.0,
+      latent_rescale: params.latentRescale || 1.0,
+      task_type: params.taskType || 'text2music',
+      ...(params.trackName ? { track_name: params.trackName } : {}),
+      ...(params.completeTrackClasses?.length ? { track_classes: params.completeTrackClasses } : {}),
+      use_adg: params.loraLoaded ? false : (params.useAdg || false),
+      cfg_interval_start: params.cfgIntervalStart || 0.0,
+      cfg_interval_end: params.cfgIntervalEnd || 1.0,
+      infer_method: params.inferMethod || 'ode',
+      shift: params.shift,
+      audio_format: params.audioFormat || 'mp3',
+      use_cot_caption: (!params.loraLoaded && params.thinking) ? (params.useCotCaption !== false) : false,
+      use_cot_language: (!params.loraLoaded && params.thinking) ? (params.useCotLanguage !== false) : false,
+      use_cot_metas: false,
+      ...(!params.loraLoaded && params.thinking ? {
+        lm_model_path: params.lmModel || undefined,
+        lm_backend: params.lmBackend || 'pt',
+        lm_temperature: params.lmTemperature,
+        lm_cfg_scale: params.lmCfgScale,
+        lm_top_k: params.lmTopK,
+        lm_top_p: params.lmTopP,
+        lm_negative_prompt: params.lmNegativePrompt,
+        lm_repetition_penalty: params.lmRepetitionPenalty ?? 1.0,
+      } : {}),
+      constrained_decoding: params.constrainedDecoding !== false,
+      constrained_decoding_debug: params.constrainedDecodingDebug || false,
+    };
     const acestepResponse = await fetch(`${config.acestep.apiUrl}/release_task`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': process.env.ACESTEP_API_KEY || '',
       },
-      body: JSON.stringify({
-        prompt: params.customMode ? params.style : (params.songDescription || params.style),
-        lyrics: params.instrumental ? '' : (params.lyrics || ''),
-        thinking: params.loraLoaded ? false : (params.thinking || false),
-        dit_model: params.ditModel,
-        bpm: params.bpm,
-        key_scale: params.keyScale,
-        time_signature: params.timeSignature,
-        audio_duration: params.duration,
-        vocal_language: params.vocalLanguage || 'en',
-        inference_steps: params.inferenceSteps || 8,
-        guidance_scale: params.guidanceScale || 10.0,
-        use_random_seed: params.randomSeed !== false,
-        seed: params.seed || -1,
-        batch_size: params.batchSize || 1,
-        audio_code_string: params.audioCodes,
-        repainting_start: params.repaintingStart || 0.0,
-        repainting_end: params.repaintingEnd,
-        instruction: params.instruction,
-        ...(params.referenceAudioUrl ? { reference_audio_path: resolveAudioPath(params.referenceAudioUrl) } : {}),
-        ...(params.sourceAudioUrl ? { src_audio_path: resolveAudioPath(params.sourceAudioUrl) } : {}),
-        audio_cover_strength: params.audioCoverStrength ?? 1.0,
-        cover_noise_strength: params.taskType === 'cover' ? (params.coverNoiseStrength ?? 0.0) : 0.0,
-        enable_normalization: params.enableNormalization !== undefined ? params.enableNormalization : true,
-        normalization_db: params.normalizationDb !== undefined ? params.normalizationDb : -1.0,
-        latent_shift: params.latentShift || 0.0,
-        latent_rescale: params.latentRescale || 1.0,
-        task_type: params.taskType || 'text2music',
-        ...(params.trackName ? { track_name: params.trackName } : {}),
-        ...(params.completeTrackClasses?.length ? { track_classes: params.completeTrackClasses } : {}),
-        use_adg: params.loraLoaded ? false : (params.useAdg || false),
-        cfg_interval_start: params.cfgIntervalStart || 0.0,
-        cfg_interval_end: params.cfgIntervalEnd || 1.0,
-        infer_method: params.inferMethod || 'ode',
-        shift: params.shift,
-        audio_format: params.audioFormat || 'mp3',
-        use_cot_caption: (!params.loraLoaded && params.thinking) ? (params.useCotCaption !== false) : false,
-        use_cot_language: (!params.loraLoaded && params.thinking) ? (params.useCotLanguage !== false) : false,
-        use_cot_metas: false,
-        ...(!params.loraLoaded && params.thinking ? {
-          lm_model_path: params.lmModel || undefined,
-          lm_backend: params.lmBackend || 'pt',
-          lm_temperature: params.lmTemperature,
-          lm_cfg_scale: params.lmCfgScale,
-          lm_top_k: params.lmTopK,
-          lm_top_p: params.lmTopP,
-          lm_negative_prompt: params.lmNegativePrompt,
-        } : {}),
-      }),
+      body: JSON.stringify(releaseTaskBody),
     });
 
     if (!acestepResponse.ok) {
       const error = await acestepResponse.json().catch(() => ({ error: 'Generation failed' }));
-      const msg = error.error || error.message || 'Failed to start generation';
+      console.error('Backend /release_task error:', acestepResponse.status, JSON.stringify(error));
+      const detail = typeof error.detail === 'string' ? error.detail : Array.isArray(error.detail) ? JSON.stringify(error.detail) : null;
+      const msg = detail || error.error || error.message || 'Failed to start generation';
       try {
         await pool.query(
           `UPDATE generation_jobs SET status = 'failed', error = ?, updated_at = datetime('now') WHERE id = ?`,
@@ -991,10 +1011,8 @@ router.get('/health', async (_req, res: Response) => {
 router.get('/limits', async (_req, res: Response) => {
   try {
     const { spawn } = await import('child_process');
-    const ACESTEP_DIR = process.env.ACESTEP_PATH || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../ACE-Step-1.5');
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    const SCRIPTS_DIR = path.join(__dirname, '../../scripts');
+    const ACESTEP_DIR = process.env.ACESTEP_PATH || PROJECT_ROOT;
+    const SCRIPTS_DIR = path.join(path.dirname(__filename_gen), '../../scripts');
     const LIMITS_SCRIPT = path.join(SCRIPTS_DIR, 'get_limits.py');
     const pythonPath = resolvePythonPath(ACESTEP_DIR);
 
@@ -1100,10 +1118,8 @@ router.post('/format', authMiddleware, async (req: AuthenticatedRequest, res: Re
     // Attempt 2: Fall back to local Python script
     const { spawn } = await import('child_process');
 
-    const ACESTEP_DIR = process.env.ACESTEP_PATH || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../ACE-Step-1.5');
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    const SCRIPTS_DIR = path.join(__dirname, '../../scripts');
+    const ACESTEP_DIR = process.env.ACESTEP_PATH || PROJECT_ROOT;
+    const SCRIPTS_DIR = path.join(path.dirname(__filename_gen), '../../scripts');
     const FORMAT_SCRIPT = path.join(SCRIPTS_DIR, 'format_sample.py');
     const pythonPath = resolvePythonPath(ACESTEP_DIR);
 

@@ -3,7 +3,8 @@ import { Sparkles, ChevronDown, Settings2, Trash2, Music2, Sliders, Dices, Hash,
 import { GenerationParams, Song } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../context/I18nContext';
-import { generateApi } from '../services/api';
+import { generateApi, modelApi, loraApi } from '../services/api';
+import type { ModelInfo, LmModelInfo, LoraAdapterInfo } from '../services/api';
 import { MAIN_STYLES, SUB_STYLES, ALL_STYLES } from '../data/genres';
 import { EditableSlider } from './EditableSlider';
 import { DualRangeSlider } from './DualRangeSlider';
@@ -23,6 +24,7 @@ interface ReferenceTrack {
 interface CreatePanelProps {
   onGenerate: (params: GenerationParams) => void;
   isGenerating: boolean;
+  isReinitializing?: boolean;
   initialData?: { song: Song, timestamp: number } | null;
   createdSongs?: Song[];
   pendingAudioSelection?: { target: 'reference' | 'source'; url: string; title?: string } | null;
@@ -109,6 +111,7 @@ const VOCAL_LANGUAGE_KEYS = [
 export const CreatePanel: React.FC<CreatePanelProps> = ({
   onGenerate,
   isGenerating,
+  isReinitializing = false,
   initialData,
   createdSongs = [],
   pendingAudioSelection,
@@ -206,6 +209,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   const [useCotCaption, setUseCotCaption] = useState(false);
   const [useCotLanguage, setUseCotLanguage] = useState(true);
   const [autogen, setAutogen] = useState(false);
+  const [constrainedDecoding, setConstrainedDecoding] = useState(true);
   const [constrainedDecodingDebug, setConstrainedDecodingDebug] = useState(false);
   const [allowLmBatch, setAllowLmBatch] = useState(true);
   const [getScores, setGetScores] = useState(false);
@@ -214,15 +218,21 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   const [lmBatchChunkSize, setLmBatchChunkSize] = useState(8);
   const [trackName, setTrackName] = useState('');
   const [completeTrackClasses, setCompleteTrackClasses] = useState('');
+  const [lmRepetitionPenalty, setLmRepetitionPenalty] = useState(1.0);
   const [isFormatCaption, setIsFormatCaption] = useState(false);
   const [maxDurationWithLm, setMaxDurationWithLm] = useState(240);
   const [maxDurationWithoutLm, setMaxDurationWithoutLm] = useState(240);
 
-  // LoRA Parameters
+  // LoRA Parameters (multi-adapter)
   const [showLoraPanel, setShowLoraPanel] = useState(false);
   const [loraPath, setLoraPath] = useState('./lokr_output/final/lokr_weights.safetensors');
+  const [loraAdapterName, setLoraAdapterName] = useState('');
   const [loraLoaded, setLoraLoaded] = useState(false);
+  const [loraEnabled, setLoraEnabled] = useState(false);
   const [loraScale, setLoraScale] = useState(1.0);
+  const [loraAdapters, setLoraAdapters] = useState<string[]>([]);
+  const [loraScales, setLoraScales] = useState<Record<string, number>>({});
+  const [loraAdapterType, setLoraAdapterType] = useState<string | null>(null);
   const [loraError, setLoraError] = useState<string | null>(null);
   const [isLoraLoading, setIsLoraLoading] = useState(false);
 
@@ -235,10 +245,13 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   const previousModelRef = useRef<string>(selectedModel);
   const isMountedRef = useRef(true);
   const modelsRetryTimeoutRef = useRef<number | null>(null);
+  const [isModelSwitching, setIsModelSwitching] = useState(false);
 
-  // Available models fetched from backend
-  const [fetchedModels, setFetchedModels] = useState<{ name: string; is_active: boolean; is_preloaded: boolean }[]>([]);
+  // Available models fetched from backend (official API)
+  const [fetchedModels, setFetchedModels] = useState<ModelInfo[]>([]);
+  const [fetchedLmModels, setFetchedLmModels] = useState<LmModelInfo[]>([]);
   const [backendUnavailable, setBackendUnavailable] = useState(false);
+  const [backendHealth, setBackendHealth] = useState<{ modelsInitialized: boolean; llmInitialized: boolean; loadedModel: string | null; loadedLmModel: string | null } | null>(null);
 
   // Fallback model list when backend is unavailable
   const availableModels = useMemo(() => {
@@ -466,8 +479,20 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     }
   }, [loraLoaded]);
 
-  // LoRA API handlers
-  const handleLoraToggle = async () => {
+  // Sync LoRA state from backend status response
+  const syncLoraState = useCallback((status: LoraAdapterInfo) => {
+    setLoraLoaded(Boolean(status.lora_loaded));
+    setLoraEnabled(Boolean(status.use_lora));
+    if (typeof status.lora_scale === 'number' && Number.isFinite(status.lora_scale)) {
+      setLoraScale(status.lora_scale);
+    }
+    setLoraAdapterType(status.adapter_type ?? null);
+    setLoraAdapters(status.adapters ?? []);
+    setLoraScales(status.scales ?? {});
+  }, []);
+
+  // LoRA API handlers (multi-adapter)
+  const handleLoraLoad = async () => {
     if (!token) {
       setLoraError(t('pleaseSignInToUseLoRA'));
       return;
@@ -481,17 +506,19 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     setLoraError(null);
 
     try {
-      if (loraLoaded) {
-        await handleLoraUnload();
-      } else {
-        const result = await generateApi.loadLora({ lora_path: loraPath }, token);
-        setLoraLoaded(true);
-        console.log('LoRA loaded:', result?.message);
+      const params: { lora_path: string; adapter_name?: string } = { lora_path: loraPath };
+      if (loraAdapterName.trim()) {
+        params.adapter_name = loraAdapterName.trim();
       }
+      const result = await loraApi.load(params, token);
+      console.log('LoRA loaded:', result?.message);
+      // Refresh full status
+      const status = await loraApi.getStatus(token);
+      syncLoraState(status);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'LoRA operation failed';
+      const message = err instanceof Error ? err.message : 'LoRA load failed';
       setLoraError(message);
-      console.error('LoRA error:', err);
+      console.error('LoRA load error:', err);
     } finally {
       setIsLoraLoading(false);
     }
@@ -504,8 +531,12 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     setLoraError(null);
 
     try {
-      const result = await generateApi.unloadLora(token);
+      const result = await loraApi.unload(token);
       setLoraLoaded(false);
+      setLoraEnabled(false);
+      setLoraAdapters([]);
+      setLoraScales({});
+      setLoraAdapterType(null);
       console.log('LoRA unloaded:', result?.message);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to unload LoRA';
@@ -516,15 +547,59 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     }
   };
 
-  const handleLoraScaleChange = async (newScale: number) => {
-    setLoraScale(newScale);
+  const handleLoraToggleEnabled = async () => {
+    if (!token || !loraLoaded) return;
+
+    try {
+      const newState = !loraEnabled;
+      await loraApi.toggle({ use_lora: newState }, token);
+      setLoraEnabled(newState);
+    } catch (err) {
+      console.error('Failed to toggle LoRA:', err);
+    }
+  };
+
+  const handleLoraScaleChange = async (newScale: number, adapterName?: string) => {
+    if (adapterName) {
+      setLoraScales(prev => ({ ...prev, [adapterName]: newScale }));
+    } else {
+      setLoraScale(newScale);
+    }
 
     if (!token || !loraLoaded) return;
 
     try {
-      await generateApi.setLoraScale({ scale: newScale }, token);
+      await loraApi.setScale({ scale: newScale, adapter_name: adapterName }, token);
     } catch (err) {
       console.error('Failed to set LoRA scale:', err);
+    }
+  };
+
+  // Model switch via official /v1/init API
+  const handleModelSwitch = async (modelName: string) => {
+    if (!token) return;
+    setIsModelSwitching(true);
+    try {
+      const result = await modelApi.initModel({ model: modelName }, token);
+      console.log('Model switched:', result?.message);
+      if (result.models) {
+        setFetchedModels(result.models);
+      }
+      if (result.lm_models) {
+        setFetchedLmModels(result.lm_models);
+      }
+      setBackendHealth(prev => prev ? {
+        ...prev,
+        modelsInitialized: true,
+        loadedModel: result.loaded_model,
+        loadedLmModel: result.loaded_lm_model,
+        llmInitialized: result.llm_initialized,
+      } : null);
+    } catch (err) {
+      console.error('Model switch failed:', err);
+      alert(err instanceof Error ? err.message : 'Model switch failed');
+    } finally {
+      setIsModelSwitching(false);
     }
   };
 
@@ -640,47 +715,57 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
 
   const refreshModels = useCallback(async (isInitial = false): Promise<boolean> => {
     try {
-      const modelsRes = await fetch('/api/generate/models');
-      if (modelsRes.ok) {
-        const data = await modelsRes.json();
-        const models = data.models || [];
-        if (models.length > 0) {
+      // Use official /v1/model_inventory via modelApi
+      const healthRes = await modelApi.getHealth();
+      if (!isMountedRef.current) return false;
+      setBackendHealth({
+        modelsInitialized: healthRes.models_initialized,
+        llmInitialized: healthRes.llm_initialized,
+        loadedModel: healthRes.loaded_model,
+        loadedLmModel: healthRes.loaded_lm_model,
+      });
+      setBackendUnavailable(false);
+
+      // Fetch model inventory (needs token but health doesn't)
+      if (token) {
+        try {
+          const inventory = await modelApi.getModels(token);
           if (!isMountedRef.current) return false;
-          setFetchedModels(models);
-          setBackendUnavailable(false);
-          // Only sync to backend's active model on initial load
-          // After that, respect user's selection
-          if (isInitial) {
-            const active = models.find((m: any) => m.is_active);
-            if (active) {
-              setSelectedModel(active.name);
-              localStorage.setItem('ace-model', active.name);
+          if (inventory.models?.length > 0) {
+            setFetchedModels(inventory.models);
+          }
+          if (inventory.lm_models) {
+            setFetchedLmModels(inventory.lm_models);
+          }
+          // On initial load, sync to the loaded model
+          if (isInitial && inventory.default_model) {
+            const loadedModel = inventory.models.find(m => m.is_loaded && m.is_default);
+            if (loadedModel) {
+              setSelectedModel(loadedModel.name);
+              localStorage.setItem('ace-model', loadedModel.name);
             }
           }
-          return true;
+        } catch {
+          // Token may not be ready yet, health was ok though
         }
-      } else if (modelsRes.status === 503) {
-        if (isMountedRef.current) setBackendUnavailable(true);
       }
+      return true;
     } catch {
       if (isMountedRef.current) setBackendUnavailable(true);
     }
     return false;
-  }, []);
+  }, [token]);
 
   const refreshLoraStatus = useCallback(async () => {
     if (!token) return;
     try {
-      const status = await generateApi.getLoraStatus(token);
+      const status = await loraApi.getStatus(token);
       if (!isMountedRef.current) return;
-      setLoraLoaded(Boolean(status?.lora_loaded));
-      if (typeof status?.lora_scale === 'number' && Number.isFinite(status.lora_scale)) {
-        setLoraScale(status.lora_scale);
-      }
+      syncLoraState(status);
     } catch {
       // ignore - backend may be starting
     }
-  }, [token]);
+  }, [token, syncLoraState]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -1259,7 +1344,9 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         useCotCaption,
         useCotLanguage,
         autogen,
+        constrainedDecoding,
         constrainedDecodingDebug,
+        lmRepetitionPenalty,
         allowLmBatch,
         getScores,
         getLrc,
@@ -1274,7 +1361,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
           return parsed.length ? parsed : undefined;
         })(),
         isFormatCaption,
-        loraLoaded,
+        loraLoaded: loraLoaded && loraEnabled,
       });
     }
   };
@@ -1344,8 +1431,18 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         {/* Header - Mode Toggle & Model Selection */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">ACE-Step v1.5</span>
+            <div className={`w-2 h-2 rounded-full ${
+              backendUnavailable ? 'bg-red-500' :
+              backendHealth?.modelsInitialized ? 'bg-green-500 animate-pulse' :
+              'bg-yellow-500 animate-pulse'
+            }`} title={
+              backendUnavailable ? 'Backend unavailable' :
+              backendHealth?.modelsInitialized ? `Model: ${backendHealth.loadedModel || 'unknown'}` :
+              'Connecting...'
+            }></div>
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              {isModelSwitching ? t('switchingModel') || 'Switching...' : 'ACE-Step v1.5'}
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1387,10 +1484,14 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                     </div>
                   )}
                   <div className="max-h-96 overflow-y-auto custom-scrollbar">
-                    {availableModels.map(model => (
+                    {availableModels.map(model => {
+                      const modelInfo = fetchedModels.find(m => m.name === model.id);
+                      const isLoaded = modelInfo?.is_loaded ?? false;
+                      const isDefault = modelInfo?.is_default ?? false;
+                      return (
                       <button
                         key={model.id}
-                        onClick={() => {
+                        onClick={async () => {
                           setSelectedModel(model.id);
                           localStorage.setItem('ace-model', model.id);
                           // Auto-adjust parameters for non-turbo models
@@ -1403,19 +1504,28 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                             handleTaskTypeChange('text2music');
                           }
                           setShowModelMenu(false);
+                          // Hot-switch via official /v1/init API
+                          if (!isLoaded) {
+                            void handleModelSwitch(model.id);
+                          }
                         }}
+                        disabled={isModelSwitching}
                         className={`w-full px-4 py-3 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border-b border-zinc-100 dark:border-zinc-800 last:border-b-0 ${
                           selectedModel === model.id ? 'bg-zinc-50 dark:bg-zinc-800/50' : ''
-                        }`}
+                        } ${isModelSwitching ? 'opacity-50 cursor-wait' : ''}`}
                       >
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-zinc-900 dark:text-white">
                               {getModelDisplayName(model.id)}
                             </span>
-                            {fetchedModels.find(m => m.name === model.id)?.is_preloaded && (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                                {fetchedModels.find(m => m.name === model.id)?.is_active ? t('modelActive') : t('modelReady')}
+                            {isLoaded && (
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                isDefault
+                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                  : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                              }`}>
+                                {isDefault ? t('modelActive') || 'Active' : t('modelReady') || 'Ready'}
                               </span>
                             )}
                           </div>
@@ -1429,7 +1539,8 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                         </div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400">{model.id}</p>
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -2126,70 +2237,134 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
             >
               <div className="flex items-center gap-2">
                 <Sliders size={16} className="text-zinc-500" />
-                <span>LoRA</span>
+                <span>LoRA / LoKr</span>
+                {loraLoaded && (
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                    {loraAdapters.length > 0 ? `${loraAdapters.length} loaded` : loraAdapterType || 'loaded'}
+                  </span>
+                )}
               </div>
               <ChevronDown size={18} className={`text-pink-500 chevron-icon ${showLoraPanel ? 'rotated' : ''}`} />
             </button>
 
             {showLoraPanel && (
               <div className="bg-white dark:bg-suno-card rounded-xl border border-zinc-200 dark:border-white/5 p-4 space-y-4">
-                {/* LoRA Path Input */}
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('loraPath')}</label>
-                  <input
-                    type="text"
-                    value={loraPath}
-                    onChange={(e) => setLoraPath(e.target.value)}
-                    placeholder={t('loraPathPlaceholder')}
-                    className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors"
-                  />
-                </div>
-
-                {/* LoRA Load/Unload Toggle */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between py-2 border-t border-zinc-100 dark:border-white/5">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${
-                        loraLoaded ? 'bg-green-500 animate-pulse' : 'bg-red-500'
-                      }`}></div>
-                      <span className={`text-xs font-medium ${
-                        loraLoaded ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                      }`}>
-                        {loraLoaded ? t('loraLoaded') : t('loraUnloaded')}
-                      </span>
-                    </div>
-                    <button
-                      onClick={handleLoraToggle}
-                      disabled={!loraPath.trim() || isLoraLoading}
-                      className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-                        loraLoaded
-                          ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/20 hover:from-green-600 hover:to-emerald-700'
-                          : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                      }`}
-                    >
-                      {isLoraLoading ? '...' : (loraLoaded ? t('loraUnload') : t('loraLoad'))}
-                    </button>
+                {/* Status & Enable Toggle */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      loraLoaded ? (loraEnabled ? 'bg-green-500 animate-pulse' : 'bg-yellow-500') : 'bg-red-500'
+                    }`}></div>
+                    <span className={`text-xs font-medium ${
+                      loraLoaded
+                        ? (loraEnabled ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400')
+                        : 'text-red-600 dark:text-red-400'
+                    }`}>
+                      {loraLoaded
+                        ? (loraEnabled ? t('loraLoaded') || 'Active' : 'Loaded (disabled)')
+                        : t('loraUnloaded') || 'Not loaded'}
+                    </span>
                   </div>
-                  {loraError && (
-                    <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
-                      {loraError}
+                  {loraLoaded && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-zinc-500">{loraEnabled ? 'ON' : 'OFF'}</span>
+                      <button
+                        onClick={handleLoraToggleEnabled}
+                        className={`w-9 h-5 rounded-full flex items-center transition-colors duration-200 px-0.5 border border-zinc-200 dark:border-white/5 ${loraEnabled ? 'bg-green-500' : 'bg-zinc-300 dark:bg-black/40'}`}
+                      >
+                        <div className={`w-4 h-4 rounded-full bg-white transform transition-transform duration-200 shadow-sm ${loraEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </button>
                     </div>
                   )}
                 </div>
 
-                {/* LoRA Scale Slider */}
-                <div className={!loraLoaded ? 'opacity-40 pointer-events-none' : ''}>
-                  <EditableSlider
-                    label={t('loraScale')}
-                    value={loraScale}
-                    min={0}
-                    max={2}
-                    step={0.05}
-                    onChange={handleLoraScaleChange}
-                    formatDisplay={(val) => val.toFixed(2)}
-                    helpText={t('loraScaleDescription')}
+                {/* Add Adapter */}
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('loraPath') || 'Adapter Path'}</label>
+                  <input
+                    type="text"
+                    value={loraPath}
+                    onChange={(e) => setLoraPath(e.target.value)}
+                    placeholder={t('loraPathPlaceholder') || 'Path to LoRA dir or LoKr .safetensors'}
+                    className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors"
                   />
+                  <input
+                    type="text"
+                    value={loraAdapterName}
+                    onChange={(e) => setLoraAdapterName(e.target.value)}
+                    placeholder={t('adapterNameOptional') || 'Adapter name (optional, for multi-adapter)'}
+                    className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleLoraLoad}
+                      disabled={!loraPath.trim() || isLoraLoading}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700"
+                    >
+                      {isLoraLoading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                      {isLoraLoading ? 'Loading...' : (loraLoaded ? t('addAdapter') || 'Add Adapter' : t('loraLoad') || 'Load')}
+                    </button>
+                    {loraLoaded && (
+                      <button
+                        onClick={handleLoraUnload}
+                        disabled={isLoraLoading}
+                        className="px-3 py-2 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/30"
+                      >
+                        {t('loraUnload') || 'Unload All'}
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {loraError && (
+                  <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
+                    {loraError}
+                  </div>
+                )}
+
+                {/* Loaded Adapters List */}
+                {loraAdapters.length > 0 && (
+                  <div className="space-y-2 border-t border-zinc-100 dark:border-white/5 pt-3">
+                    <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
+                      {t('loadedAdapters') || 'Loaded Adapters'}
+                    </label>
+                    {loraAdapters.map(name => (
+                      <div key={name} className="space-y-1 bg-zinc-50 dark:bg-black/20 rounded-lg p-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{name}</span>
+                          <span className="text-[10px] text-zinc-400 tabular-nums">
+                            {(loraScales[name] ?? 1.0).toFixed(2)}
+                          </span>
+                        </div>
+                        <EditableSlider
+                          label=""
+                          value={loraScales[name] ?? 1.0}
+                          min={0}
+                          max={2}
+                          step={0.05}
+                          onChange={(val) => handleLoraScaleChange(val, name)}
+                          formatDisplay={(val) => val.toFixed(2)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Global Scale (when no named adapters) */}
+                {loraLoaded && loraAdapters.length === 0 && (
+                  <div className="border-t border-zinc-100 dark:border-white/5 pt-3">
+                    <EditableSlider
+                      label={t('loraScale') || 'Scale'}
+                      value={loraScale}
+                      min={0}
+                      max={2}
+                      step={0.05}
+                      onChange={(val) => handleLoraScaleChange(val)}
+                      formatDisplay={(val) => val.toFixed(2)}
+                      helpText={t('loraScaleDescription') || 'Adapter effect strength'}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </>
@@ -2530,6 +2705,31 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                     className="w-full h-16 bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-lg p-2 text-xs text-zinc-900 dark:text-white focus:outline-none resize-none"
                   />
                   <p className="text-[10px] text-zinc-500">{t('useWhenCfgScaleGreater')}</p>
+                </div>
+
+                {/* LM Repetition Penalty */}
+                <EditableSlider
+                  label={t('lmRepetitionPenalty') || 'Repetition Penalty'}
+                  value={lmRepetitionPenalty}
+                  min={1.0}
+                  max={2.0}
+                  step={0.05}
+                  onChange={setLmRepetitionPenalty}
+                  formatDisplay={(val) => val.toFixed(2)}
+                  helpText={t('lmRepetitionPenaltyHint') || 'Penalize repeated tokens (1.0 = no penalty)'}
+                />
+
+                {/* Constrained Decoding */}
+                <div className="flex items-center justify-between py-2 border-t border-zinc-100 dark:border-white/5">
+                  <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400" title={t('constrainedDecodingTooltip') || 'Constrain LM output to valid music tokens'}>
+                    {t('constrainedDecoding') || 'Constrained Decoding'}
+                  </span>
+                  <button
+                    onClick={() => setConstrainedDecoding(!constrainedDecoding)}
+                    className={`w-10 h-5 rounded-full flex items-center transition-colors duration-200 px-0.5 border border-zinc-200 dark:border-white/5 ${constrainedDecoding ? 'bg-pink-600' : 'bg-zinc-300 dark:bg-black/40'}`}
+                  >
+                    <div className={`w-4 h-4 rounded-full bg-white transform transition-transform duration-200 shadow-sm ${constrainedDecoding ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
                 </div>
               </div>
             )}
@@ -3088,15 +3288,17 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         <button
           onClick={handleGenerate}
           className="w-full h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] bg-gradient-to-r from-orange-500 to-pink-600 text-white shadow-lg hover:brightness-110"
-          disabled={isGenerating || !isAuthenticated}
+          disabled={isGenerating || !isAuthenticated || isReinitializing}
         >
           <Sparkles size={18} />
           <span>
-            {isGenerating
-              ? t('generating')
-              : bulkCount > 1
-                ? `${t('createButton')} ${bulkCount} ${t('jobs')} (${bulkCount * batchSize} ${t('variations')})`
-                : `${t('createButton')}${batchSize > 1 ? ` (${batchSize} ${t('variations')})` : ''}`
+            {isReinitializing
+              ? (t('reinitializing') || 'Reinitializing...')
+              : isGenerating
+                ? t('generating')
+                : bulkCount > 1
+                  ? `${t('createButton')} ${bulkCount} ${t('jobs')} (${bulkCount * batchSize} ${t('variations')})`
+                  : `${t('createButton')}${batchSize > 1 ? ` (${batchSize} ${t('variations')})` : ''}`
             }
           </span>
         </button>

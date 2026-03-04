@@ -13,7 +13,8 @@ import { SettingsModal } from './components/SettingsModal';
 import { SongProfile } from './components/SongProfile';
 import { TrainingPanel } from './components/TrainingPanel';
 import { Song, GenerationParams, View, Playlist } from './types';
-import { generateApi, songsApi, playlistsApi, getAudioUrl } from './services/api';
+import { generateApi, songsApi, playlistsApi, getAudioUrl, modelApi } from './services/api';
+import type { ServerStats } from './services/api';
 import { useAuth } from './context/AuthContext';
 import { useResponsive } from './context/ResponsiveContext';
 import { I18nProvider, useI18n } from './context/I18nContext';
@@ -134,6 +135,8 @@ function AppContent() {
 
   // UI State
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isReinitializing, setIsReinitializing] = useState(false);
+  const [serverStats, setServerStats] = useState<ServerStats | null>(null);
   const [showRightSidebar, setShowRightSidebar] = useState(true);
   const [showLeftSidebar, setShowLeftSidebar] = useState(false);
   const [pendingAudioSelection, setPendingAudioSelection] = useState<{ target: 'reference' | 'source'; url: string; title?: string } | null>(null);
@@ -492,6 +495,27 @@ function AppContent() {
     loadSongs();
   }, [isAuthenticated, token]);
 
+  const fetchServerStats = useCallback(async () => {
+    if (!token) return;
+    try {
+      const stats = await modelApi.getStats(token);
+      setServerStats(stats);
+    } catch {
+      // ignore - backend may not be ready
+    }
+  }, [token]);
+
+  // Poll server stats: 30s normally, 2s while generation jobs are active
+  useEffect(() => {
+    if (!token) return;
+    void fetchServerStats();
+    const intervalMs = isGenerating ? 2000 : 30000;
+    const interval = setInterval(() => {
+      void fetchServerStats();
+    }, intervalMs);
+    return () => clearInterval(interval);
+  }, [token, isGenerating, fetchServerStats]);
+
   const loadReferenceTracks = useCallback(async () => {
     if (!isAuthenticated || !token) return;
     try {
@@ -838,6 +862,7 @@ function AppContent() {
     }
 
     setIsGenerating(true);
+    void fetchServerStats();
     setCurrentView('create');
     setMobileShowList(false);
 
@@ -1478,6 +1503,8 @@ function AppContent() {
       case 'training':
         return (
           <TrainingPanel
+            isReinitializing={isReinitializing}
+            onReinitializingChange={setIsReinitializing}
             onPlaySample={(audioPath: string, title: string) => {
               // Convert dataset audio path to playable URL
               // Audio paths from dataset can be relative (./datasets/...) or absolute paths
@@ -1528,6 +1555,7 @@ function AppContent() {
               <CreatePanel
                 onGenerate={handleGenerate}
                 isGenerating={isGenerating}
+                isReinitializing={isReinitializing}
                 initialData={reuseData}
                 createdSongs={songs}
                 pendingAudioSelection={pendingAudioSelection}
@@ -1544,6 +1572,7 @@ function AppContent() {
                 likedSongIds={likedSongIds}
                 isPlaying={isPlaying}
                 referenceTracks={referenceTracks}
+                serverStats={serverStats}
                 onPlay={playSong}
                 onSelect={(s) => {
                   setSelectedSong(s);

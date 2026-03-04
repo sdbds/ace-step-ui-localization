@@ -7,6 +7,7 @@ import { SongDropdownMenu } from './SongDropdownMenu';
 import { ShareModal } from './ShareModal';
 import { AlbumCover } from './AlbumCover';
 import { songsApi } from '../services/api';
+import type { ServerStats } from '../services/api';
 
 interface SongListProps {
     songs: Song[];
@@ -30,6 +31,7 @@ interface SongListProps {
     onCoverSong?: (song: Song) => void;
     onUseUploadAsReference?: (track: { audio_url: string; filename: string }) => void;
     onCoverUpload?: (track: { audio_url: string; filename: string }) => void;
+    serverStats?: ServerStats | null;
 }
 
 // ... existing code ...
@@ -107,7 +109,8 @@ export const SongList: React.FC<SongListProps> = ({
     onUseAsReference,
     onCoverSong,
     onUseUploadAsReference,
-    onCoverUpload
+    onCoverUpload,
+    serverStats
 }) => {
     const { user } = useAuth();
     const { t } = useI18n();
@@ -221,10 +224,19 @@ export const SongList: React.FC<SongListProps> = ({
 
                 {/* Header */}
                 <div className="flex flex-col gap-6 mb-8">
-                    <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-                        <span className="hover:text-black dark:hover:text-white cursor-pointer transition-colors">{t('workspaces')}</span>
-                        <span className="text-zinc-400 dark:text-zinc-600">›</span>
-                        <span className="text-zinc-900 dark:text-white font-medium">{t('myWorkspace')}</span>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+                            <span className="hover:text-black dark:hover:text-white cursor-pointer transition-colors">{t('workspaces')}</span>
+                            <span className="text-zinc-400 dark:text-zinc-600">›</span>
+                            <span className="text-zinc-900 dark:text-white font-medium">{t('myWorkspace')}</span>
+                        </div>
+                        {serverStats && (
+                            <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                                Queue {serverStats.queue_size}/{serverStats.queue_maxsize}
+                                {serverStats.avg_job_seconds > 0 && <> · avg {serverStats.avg_job_seconds.toFixed(0)}s</>}
+                                {(serverStats.jobs?.succeeded ?? 0) > 0 && <> · {serverStats.jobs.succeeded} done</>}
+                            </span>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-3">
