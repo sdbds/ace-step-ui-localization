@@ -6,6 +6,13 @@ import { useI18n } from '../context/I18nContext';
 import { generateApi, modelApi, loraApi } from '../services/api';
 import type { ModelInfo, LmModelInfo, LoraAdapterInfo } from '../services/api';
 import { MAIN_STYLES, SUB_STYLES, ALL_STYLES } from '../data/genres';
+import {
+  REPAINT_MODE_OPTIONS,
+  SUPPORTED_AUDIO_FORMATS,
+  deriveRepaintModeFromStrength,
+  syncRepaintStateOnModeChange,
+} from '../generationControls';
+import type { RepaintMode, SupportedAudioFormat } from '../generationControls';
 import { EditableSlider } from './EditableSlider';
 import { DualRangeSlider } from './DualRangeSlider';
 import { ToggleSwitch } from './ToggleSwitch';
@@ -168,7 +175,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   const [randomSeed, setRandomSeed] = useState(true);
   const [seed, setSeed] = useState(-1);
   const [thinking, setThinking] = useState(false); // Default false for GPU compatibility
-  const [audioFormat, setAudioFormat] = useState<'mp3' | 'flac'>('mp3');
+  const [audioFormat, setAudioFormat] = useState<SupportedAudioFormat>('mp3');
   const [inferenceSteps, setInferenceSteps] = useState(8);
   const [inferMethod, setInferMethod] = useState<'ode' | 'sde'>('ode');
   const [lmBackend, setLmBackend] = useState<'pt' | 'vllm'>('pt');
@@ -193,6 +200,9 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   const [audioCodes, setAudioCodes] = useState('');
   const [repaintingStart, setRepaintingStart] = useState(0);
   const [repaintingEnd, setRepaintingEnd] = useState(-1);
+  const [repaintMode, setRepaintMode] = useState<RepaintMode>('balanced');
+  const [repaintStrength, setRepaintStrength] = useState(0.5);
+  const [repaintStrengthMemory, setRepaintStrengthMemory] = useState(0.5);
   const [instruction, setInstruction] = useState(t('instructionDefault'));
   const [audioCoverStrength, setAudioCoverStrength] = useState(1.0);
   const [coverNoiseStrength, setCoverNoiseStrength] = useState(0.15);
@@ -635,7 +645,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         }
         if (gp.inferMethod) setInferMethod(gp.inferMethod);
         if (gp.shift != null) setShift(gp.shift);
-        if (gp.audioFormat) setAudioFormat(gp.audioFormat);
+        if (gp.audioFormat) setAudioFormat(gp.audioFormat as SupportedAudioFormat);
         if (gp.thinking != null) setThinking(gp.thinking);
         if (gp.ditModel) setSelectedModel(gp.ditModel);
         if (gp.vocalLanguage) setVocalLanguage(gp.vocalLanguage);
@@ -648,6 +658,24 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
           if (gp.sourceAudioTitle) setSourceAudioTitle(gp.sourceAudioTitle);
         }
         if (gp.taskType) setTaskType(gp.taskType);
+        const restoredRepaintStrength = gp.repaintStrength ?? gp.repaint_strength;
+        if (restoredRepaintStrength != null) {
+          setRepaintStrength(restoredRepaintStrength);
+          if (restoredRepaintStrength > 0 && restoredRepaintStrength < 1) {
+            setRepaintStrengthMemory(restoredRepaintStrength);
+          }
+        }
+        const restoredRepaintMode = gp.repaintMode ?? gp.repaint_mode;
+        if (restoredRepaintMode) {
+          const nextState = syncRepaintStateOnModeChange(
+            restoredRepaintMode as RepaintMode,
+            restoredRepaintStrength ?? repaintStrength,
+            restoredRepaintStrength ?? repaintStrengthMemory,
+          );
+          setRepaintMode(restoredRepaintMode as RepaintMode);
+          setRepaintStrength(nextState.strength);
+          setRepaintStrengthMemory(nextState.strengthMemory);
+        }
         if (gp.lmBackend) setLmBackend(gp.lmBackend);
         if (gp.lmModel) setLmModel(gp.lmModel);
       } else if (initialData.song.ditModel) {
@@ -1137,6 +1165,25 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     setTempAudioUrl('');
   };
 
+  const handleRepaintModeChange = (mode: RepaintMode) => {
+    const nextState = syncRepaintStateOnModeChange(
+      mode,
+      repaintStrength,
+      repaintStrengthMemory,
+    );
+    setRepaintMode(mode);
+    setRepaintStrength(nextState.strength);
+    setRepaintStrengthMemory(nextState.strengthMemory);
+  };
+
+  const handleRepaintStrengthChange = (strength: number) => {
+    setRepaintStrength(strength);
+    if (strength > 0 && strength < 1) {
+      setRepaintStrengthMemory(strength);
+    }
+    setRepaintMode(deriveRepaintModeFromStrength(strength, repaintMode));
+  };
+
   // Clear incompatible audio state when switching task types to prevent
   // stale values from leaking into the wrong generation path.
   // (Matches upstream fix ace-step/ACE-Step-1.5#638)
@@ -1328,6 +1375,8 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         audioCodes: audioCodes.trim() || undefined,
         repaintingStart,
         repaintingEnd,
+        repaintMode,
+        repaintStrength,
         instruction,
         audioCoverStrength,
         coverNoiseStrength,
@@ -2517,11 +2566,14 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t('audioFormat')}</label>
                 <select
                   value={audioFormat}
-                  onChange={(e) => setAudioFormat(e.target.value as 'mp3' | 'flac')}
+                  onChange={(e) => setAudioFormat(e.target.value as SupportedAudioFormat)}
                   className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
                 >
-                  <option value="mp3">{t('mp3Smaller')}</option>
-                  <option value="flac">{t('flacLossless')}</option>
+                  {SUPPORTED_AUDIO_FORMATS.map((format) => (
+                    <option key={format.value} value={format.value}>
+                      {t(format.labelKey)}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="space-y-1.5">
@@ -2832,25 +2884,70 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
             </div>
 
             {['repaint', 'lego'].includes(taskType) && (
-              <DualRangeSlider
-                label={t('repaintingRange')}
-                minValue={repaintingStart}
-                maxValue={repaintingEnd}
-                min={0}
-                max={referenceDuration || 240}
-                step={0.5}
-                onMinChange={setRepaintingStart}
-                onMaxChange={setRepaintingEnd}
-                formatDisplay={(val) => {
-                  const m = Math.floor(val / 60);
-                  const s = Math.floor(val % 60);
-                  return `${m}:${String(s).padStart(2, '0')}`;
-                }}
-                allowAutoMax
-                autoMaxSentinel={-1}
-                autoMaxLabel={t('End')}
-                helpText={t('repaintingStartTooltip')}
-              />
+              <>
+                <DualRangeSlider
+                  label={t('repaintingRange')}
+                  minValue={repaintingStart}
+                  maxValue={repaintingEnd}
+                  min={0}
+                  max={referenceDuration || 240}
+                  step={0.5}
+                  onMinChange={setRepaintingStart}
+                  onMaxChange={setRepaintingEnd}
+                  formatDisplay={(val) => {
+                    const m = Math.floor(val / 60);
+                    const s = Math.floor(val % 60);
+                    return `${m}:${String(s).padStart(2, '0')}`;
+                  }}
+                  allowAutoMax
+                  autoMaxSentinel={-1}
+                  autoMaxLabel={t('End')}
+                  helpText={t('repaintingStartTooltip')}
+                />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label
+                      className="text-xs font-medium text-zinc-600 dark:text-zinc-400"
+                      title={t('repaintModeTooltip')}
+                    >
+                      {t('repaintMode')}
+                    </label>
+                    <select
+                      value={repaintMode}
+                      onChange={(e) =>
+                        handleRepaintModeChange(e.target.value as RepaintMode)
+                      }
+                      className="w-full bg-zinc-50 dark:bg-black/20 border border-zinc-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500 dark:focus:border-pink-500 transition-colors cursor-pointer [&>option]:bg-white [&>option]:dark:bg-zinc-800 [&>option]:text-zinc-900 [&>option]:dark:text-white"
+                    >
+                      {REPAINT_MODE_OPTIONS.map((mode) => (
+                        <option key={mode.value} value={mode.value}>
+                          {t(mode.labelKey)}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-zinc-500">
+                      {t('repaintModeHelp')}
+                    </p>
+                  </div>
+
+                  <div
+                    className={repaintMode === 'balanced' ? '' : 'opacity-60 pointer-events-none'}
+                  >
+                    <EditableSlider
+                      label={t('repaintStrength')}
+                      value={repaintStrength}
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      onChange={handleRepaintStrengthChange}
+                      formatDisplay={(val) => val.toFixed(2)}
+                      helpText={t('repaintStrengthHelp')}
+                      title={t('repaintStrengthTooltip')}
+                    />
+                  </div>
+                </div>
+              </>
             )}
 
             <div className="space-y-1.5">

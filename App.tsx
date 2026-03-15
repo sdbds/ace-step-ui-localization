@@ -903,6 +903,8 @@ function AppContent() {
         audioCodes: params.audioCodes,
         repaintingStart: params.repaintingStart,
         repaintingEnd: params.repaintingEnd,
+        repaintMode: params.repaintMode,
+        repaintStrength: params.repaintStrength,
         instruction: params.instruction,
         audioCoverStrength: params.audioCoverStrength,
         coverNoiseStrength: params.coverNoiseStrength,

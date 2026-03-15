@@ -277,7 +277,7 @@ export interface GenerationParams {
   randomSeed?: boolean;
   seed?: number;
   thinking?: boolean;
-  audioFormat?: 'mp3' | 'flac';
+  audioFormat?: "mp3" | "flac" | "opus" | "aac" | "wav" | "wav32";
   inferMethod?: 'ode' | 'sde';
   shift?: number;
 
@@ -298,6 +298,8 @@ export interface GenerationParams {
   audioCodes?: string;
   repaintingStart?: number;
   repaintingEnd?: number;
+  repaintMode?: "conservative" | "balanced" | "aggressive";
+  repaintStrength?: number;
   instruction?: string;
   audioCoverStrength?: number;
   coverNoiseStrength?: number;

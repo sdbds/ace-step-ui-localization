@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Upload, Play, Square, FolderOpen, Save, FileJson, Zap, Database, ChevronDown, ChevronUp, Edit2, X, Music } from 'lucide-react';
 import { EditableSlider } from './EditableSlider';
+import { ToggleSwitch } from './ToggleSwitch';
 
 const VOCAL_LANGUAGE_VALUES = [
   { value: 'unknown', key: 'autoInstrumental' as const },
@@ -76,7 +77,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
   const [datasetName, setDatasetName] = useState('my_lora_dataset');
   const [allInstrumental, setAllInstrumental] = useState(true);
   const [customTag, setCustomTag] = useState('');
-  const [tagPosition, setTagPosition] = useState<'prepend' | 'append' | 'replace'>('replace');
+  const [tagPosition, setTagPosition] = useState<'prepend' | 'append' | 'replace'>('append');
   const [genreRatio, setGenreRatio] = useState(0);
   const [skipMetas, setSkipMetas] = useState(false);
   const [onlyUnlabeled, setOnlyUnlabeled] = useState(false);
@@ -1264,23 +1265,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-3 cursor-pointer group">
-                        <div className="relative">
-                          <input
-                            type="checkbox"
-                            checked={allInstrumental}
-                            onChange={(e) => setAllInstrumental(e.target.checked)}
-                            className="peer sr-only"
-                          />
-                          <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-pink-500 peer-checked:to-rose-500 peer-checked:border-pink-500 transition-all duration-200 group-hover:border-pink-300 dark:group-hover:border-pink-500/50 shadow-sm" />
-                          <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        </div>
-                        <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('allInstrumental')}</span>
-                      </label>
-                    </div>
+                    <ToggleSwitch label={t('allInstrumental')} checked={allInstrumental} onChange={setAllInstrumental} />
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
@@ -1318,39 +1303,9 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
               </p>
 
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                {/* Left side: Checkboxes */}
                 <div className="flex items-center gap-6">
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <div className="relative">
-                      <input
-                        type="checkbox"
-                        checked={skipMetas}
-                        onChange={(e) => setSkipMetas(e.target.checked)}
-                        className="peer sr-only"
-                      />
-                      <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-violet-500 peer-checked:to-purple-500 peer-checked:border-violet-500 transition-all duration-200 group-hover:border-violet-300 dark:group-hover:border-violet-500/50 shadow-sm" />
-                      <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('skipMetas')}</span>
-                  </label>
-
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <div className="relative">
-                      <input
-                        type="checkbox"
-                        checked={onlyUnlabeled}
-                        onChange={(e) => setOnlyUnlabeled(e.target.checked)}
-                        className="peer sr-only"
-                      />
-                      <div className="w-5 h-5 bg-white dark:bg-zinc-800 border-2 border-zinc-300 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-violet-500 peer-checked:to-purple-500 peer-checked:border-violet-500 transition-all duration-200 group-hover:border-violet-400 dark:group-hover:border-violet-500/50" />
-                      <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('onlyUnlabeled')}</span>
-                  </label>
+                  <ToggleSwitch label={t('skipMetas')} checked={skipMetas} onChange={setSkipMetas} />
+                  <ToggleSwitch label={t('onlyUnlabeled')} checked={onlyUnlabeled} onChange={setOnlyUnlabeled} />
                 </div>
 
                 {/* Right side: LM Model dropdown */}
@@ -1461,40 +1416,8 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
                   className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={transcribeForceAll}
-                      onChange={(e) => setTranscribeForceAll(e.target.checked)}
-                      className="peer sr-only"
-                    />
-                    <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-teal-500 peer-checked:to-emerald-500 peer-checked:border-teal-500 transition-all duration-200 group-hover:border-teal-300 dark:group-hover:border-teal-500/50 shadow-sm" />
-                    <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('forceTranscribeAll')}</span>
-                </label>
-              </div>
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={returnInstrumentalLyrics}
-                      onChange={(e) => setReturnInstrumentalLyrics(e.target.checked)}
-                      className="peer sr-only"
-                    />
-                    <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-teal-500 peer-checked:to-emerald-500 peer-checked:border-teal-500 transition-all duration-200 group-hover:border-teal-300 dark:group-hover:border-teal-500/50 shadow-sm" />
-                    <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('returnInstrumentalLyrics')}</span>
-                </label>
-              </div>
+              <ToggleSwitch label={t('forceTranscribeAll')} checked={transcribeForceAll} onChange={setTranscribeForceAll} />
+              <ToggleSwitch label={t('returnInstrumentalLyrics')} checked={returnInstrumentalLyrics} onChange={setReturnInstrumentalLyrics} />
               <button
                 onClick={handleTranscribeLyrics}
                 disabled={transcribeStatus?.status === 'running'}
@@ -1575,27 +1498,10 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
                 <p className="text-xs text-zinc-600 dark:text-zinc-400">
                   {t('preprocessDescription')}
                 </p>
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <div className="relative">
-                      <input
-                        type="checkbox"
-                        checked={preprocessSkipExisting}
-                        onChange={(e) => {
-                          const v = e.target.checked;
-                          setPreprocessSkipExisting(v);
-                          localStorage.setItem('ace-preprocessSkipExisting', v ? '1' : '0');
-                        }}
-                        className="peer sr-only"
-                      />
-                      <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-amber-500 peer-checked:to-yellow-500 peer-checked:border-amber-500 transition-all duration-200 group-hover:border-amber-300 dark:group-hover:border-amber-500/50 shadow-sm" />
-                      <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('skipPreprocess')}</span>
-                  </label>
-                </div>
+                <ToggleSwitch label={t('skipPreprocess')} checked={preprocessSkipExisting} onChange={(v) => {
+                  setPreprocessSkipExisting(v);
+                  localStorage.setItem('ace-preprocessSkipExisting', v ? '1' : '0');
+                }} />
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -1845,67 +1751,11 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    <label className="flex items-center gap-3 p-2.5 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 cursor-pointer group hover:border-teal-300 dark:hover:border-teal-500/40 hover:shadow-sm transition-all duration-200">
-                      <div className="relative flex-shrink-0">
-                        <input
-                          type="checkbox"
-                          checked={lokrDecomposeBoth}
-                          onChange={(e) => setLokrDecomposeBoth(e.target.checked)}
-                          className="peer sr-only"
-                        />
-                        <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-700 dark:to-zinc-800 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-teal-500 peer-checked:to-cyan-500 peer-checked:border-teal-500 transition-all duration-200 shadow-sm" />
-                        <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('decomposeBoth')}</span>
-                    </label>
-                    <label className="flex items-center gap-3 p-2.5 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 cursor-pointer group hover:border-teal-300 dark:hover:border-teal-500/40 hover:shadow-sm transition-all duration-200">
-                      <div className="relative flex-shrink-0">
-                        <input
-                          type="checkbox"
-                          checked={lokrUseTucker}
-                          onChange={(e) => setLokrUseTucker(e.target.checked)}
-                          className="peer sr-only"
-                        />
-                        <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-700 dark:to-zinc-800 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-teal-500 peer-checked:to-cyan-500 peer-checked:border-teal-500 transition-all duration-200 shadow-sm" />
-                        <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('useTucker')}</span>
-                    </label>
-                    <label className="flex items-center gap-3 p-2.5 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 cursor-pointer group hover:border-teal-300 dark:hover:border-teal-500/40 hover:shadow-sm transition-all duration-200">
-                      <div className="relative flex-shrink-0">
-                        <input
-                          type="checkbox"
-                          checked={lokrUseScalar}
-                          onChange={(e) => setLokrUseScalar(e.target.checked)}
-                          className="peer sr-only"
-                        />
-                        <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-700 dark:to-zinc-800 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-teal-500 peer-checked:to-cyan-500 peer-checked:border-teal-500 transition-all duration-200 shadow-sm" />
-                        <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('useScalar')}</span>
-                    </label>
-                    <label className="flex items-center gap-3 p-2.5 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 cursor-pointer group hover:border-teal-300 dark:hover:border-teal-500/40 hover:shadow-sm transition-all duration-200">
-                      <div className="relative flex-shrink-0">
-                        <input
-                          type="checkbox"
-                          checked={lokrWeightDecompose}
-                          onChange={(e) => setLokrWeightDecompose(e.target.checked)}
-                          className="peer sr-only"
-                        />
-                        <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-700 dark:to-zinc-800 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-teal-500 peer-checked:to-cyan-500 peer-checked:border-teal-500 transition-all duration-200 shadow-sm" />
-                        <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <span className="text-sm text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">{t('weightDecompose')}</span>
-                    </label>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-1">
+                    <ToggleSwitch label={t('decomposeBoth')} checked={lokrDecomposeBoth} onChange={setLokrDecomposeBoth} />
+                    <ToggleSwitch label={t('useTucker')} checked={lokrUseTucker} onChange={setLokrUseTucker} />
+                    <ToggleSwitch label={t('useScalar')} checked={lokrUseScalar} onChange={setLokrUseScalar} />
+                    <ToggleSwitch label={t('weightDecompose')} checked={lokrWeightDecompose} onChange={setLokrWeightDecompose} />
                   </div>
 
                   {/* Advanced LoKR Settings (collapsible) */}
@@ -1999,44 +1849,10 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
                 </div>
 
                 {adapterType === 'lora' && (
-                  <label className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-200 dark:border-purple-800 cursor-pointer group hover:border-purple-300 dark:hover:border-purple-600 transition-all duration-200">
-                    <div className="relative flex-shrink-0">
-                      <input
-                        type="checkbox"
-                        id="useFP8"
-                        checked={useFP8}
-                        onChange={(e) => setUseFP8(e.target.checked)}
-                        className="peer sr-only"
-                      />
-                      <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 border-2 border-purple-200 dark:border-purple-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-purple-500 peer-checked:to-fuchsia-500 peer-checked:border-purple-500 transition-all duration-200 shadow-sm" />
-                      <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <label htmlFor="useFP8" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">
-                      ⚡ {t('useFP8')} <span className="text-xs text-zinc-500 dark:text-zinc-400">({t('fp8Description')})</span>
-                    </label>
-                  </label>
+                  <ToggleSwitch label={`⚡ ${t('useFP8')} (${t('fp8Description')})`} checked={useFP8} onChange={setUseFP8} />
                 )}
 
-                <label className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 cursor-pointer group hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200">
-                  <div className="relative flex-shrink-0">
-                    <input
-                      type="checkbox"
-                      id="gradientCheckpointing"
-                      checked={gradientCheckpointing}
-                      onChange={(e) => setGradientCheckpointing(e.target.checked)}
-                      className="peer sr-only"
-                    />
-                    <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 border-2 border-blue-200 dark:border-blue-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-blue-500 peer-checked:to-sky-500 peer-checked:border-blue-500 transition-all duration-200 shadow-sm" />
-                    <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <label htmlFor="gradientCheckpointing" className="text-sm font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">
-                    {t('gradientCheckpointing')} <span className="text-xs text-zinc-500 dark:text-zinc-400">({t('gradientCheckpointingDescription')})</span>
-                  </label>
-                </label>
+                <ToggleSwitch label={`${t('gradientCheckpointing')} (${t('gradientCheckpointingDescription')})`} checked={gradientCheckpointing} onChange={setGradientCheckpointing} />
               </div>
 
               {/* Training Controls */}
@@ -2390,32 +2206,14 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
             </div>
           </div>
 
-          <div className="flex items-center gap-4 pt-2">
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  id="instrumental-check"
-                  checked={editForm.is_instrumental}
-                  onChange={(e) => {
-                    const is_instrumental = e.target.checked;
-                    setEditForm((prev) => ({
-                      ...prev,
-                      is_instrumental,
-                      language: is_instrumental ? 'unknown' : prev.language,
-                    }));
-                  }}
-                  className="peer sr-only"
-                />
-                <div className="w-5 h-5 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-800 dark:to-zinc-900 border-2 border-zinc-200 dark:border-zinc-600 rounded-md peer-checked:bg-gradient-to-br peer-checked:from-pink-500 peer-checked:to-rose-500 peer-checked:border-pink-500 transition-all duration-200 group-hover:border-pink-300 dark:group-hover:border-pink-500/50 shadow-sm" />
-                <svg className="absolute top-0.5 left-0.5 w-4 h-4 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors">
-                {t('instrumental')}
-              </span>
-            </label>
+          <div className="pt-2">
+            <ToggleSwitch label={t('instrumental')} checked={editForm.is_instrumental} onChange={(v) => {
+              setEditForm((prev) => ({
+                ...prev,
+                is_instrumental: v,
+                language: v ? 'unknown' : prev.language,
+              }));
+            }} />
           </div>
 
             </div>
