@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Upload, Play, Square, FolderOpen, Save, FileJson, Zap, Database, ChevronDown, ChevronUp, Edit2, X, Music } from 'lucide-react';
 import { EditableSlider } from './EditableSlider';
 import { ToggleSwitch } from './ToggleSwitch';
+import { TRAINING_FALLBACK_DIT_MODELS, getModelDisplayName } from '../lib/modelCatalog';
 
 const VOCAL_LANGUAGE_VALUES = [
   { value: 'unknown', key: 'autoInstrumental' as const },
@@ -1613,15 +1614,8 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
                 </h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">{t('baseModelHint') || 'Select which DiT checkpoint to use as the training base. Switching will hot-swap the loaded model.'}</p>
                 <div className="flex flex-wrap gap-2">
-                  {(availableBaseModels.length > 0 ? availableBaseModels : [
-                    { name: 'acestep-v15-base', is_loaded: false, is_default: false },
-                    { name: 'acestep-v15-sft', is_loaded: false, is_default: false },
-                    { name: 'acestep-v15-turbo', is_loaded: false, is_default: false },
-                    { name: 'acestep-v15-turbo-shift1', is_loaded: false, is_default: false },
-                    { name: 'acestep-v15-turbo-shift3', is_loaded: false, is_default: false },
-                  ]).map(model => {
+                  {(availableBaseModels.length > 0 ? availableBaseModels : TRAINING_FALLBACK_DIT_MODELS).map(model => {
                     const isSelected = trainingBaseModel === model.name;
-                    const shortName = model.name.replace('acestep-v15-', '');
                     return (
                       <button
                         key={model.name}
@@ -1633,7 +1627,7 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
                             : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-700'
                         } ${(isModelSwitching || isTraining) ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
-                        {shortName}
+                        {getModelDisplayName(model.name, model.name)}
                         {model.is_loaded && <span className="ml-1 text-[9px] opacity-70">●</span>}
                       </button>
                     );

@@ -6,6 +6,7 @@ import { useI18n } from '../context/I18nContext';
 import { generateApi, modelApi, loraApi } from '../services/api';
 import type { ModelInfo, LmModelInfo, LoraAdapterInfo } from '../services/api';
 import { MAIN_STYLES, SUB_STYLES, ALL_STYLES } from '../data/genres';
+import { FALLBACK_DIT_MODELS, getModelDisplayName } from '../lib/modelCatalog';
 import {
   REPAINT_MODE_OPTIONS,
   SUPPORTED_AUDIO_FORMATS,
@@ -268,28 +269,8 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     if (fetchedModels.length > 0) {
       return fetchedModels.map(m => ({ id: m.name, name: m.name }));
     }
-    return [
-      { id: 'acestep-v15-base', name: 'acestep-v15-base' },
-      { id: 'acestep-v15-sft', name: 'acestep-v15-sft' },
-      { id: 'acestep-v15-turbo', name: 'acestep-v15-turbo' },
-      { id: 'acestep-v15-turbo-shift1', name: 'acestep-v15-turbo-shift1' },
-      { id: 'acestep-v15-turbo-shift3', name: 'acestep-v15-turbo-shift3' },
-      { id: 'acestep-v15-turbo-continuous', name: 'acestep-v15-turbo-continuous' },
-    ];
+    return FALLBACK_DIT_MODELS;
   }, [fetchedModels]);
-
-  // Map model ID to short display name
-  const getModelDisplayName = (modelId: string): string => {
-    const mapping: Record<string, string> = {
-      'acestep-v15-base': '1.5B',
-      'acestep-v15-sft': '1.5S',
-      'acestep-v15-turbo-shift1': '1.5TS1',
-      'acestep-v15-turbo-shift3': '1.5TS3',
-      'acestep-v15-turbo-continuous': '1.5TC',
-      'acestep-v15-turbo': '1.5T',
-    };
-    return mapping[modelId] || modelId;
-  };
 
   // Check if model is a turbo variant
   const isTurboModel = (modelId: string): boolean => {
@@ -1518,7 +1499,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 className="bg-zinc-200 dark:bg-black/40 border border-zinc-300 dark:border-white/5 rounded-md px-2 py-1 text-[11px] font-medium text-zinc-900 dark:text-white hover:bg-zinc-300 dark:hover:bg-black/50 transition-colors flex items-center gap-1"
                 disabled={availableModels.length === 0}
               >
-                {availableModels.length === 0 ? '...' : getModelDisplayName(selectedModel)}
+                {availableModels.length === 0 ? '...' : getModelDisplayName(selectedModel, selectedModel)}
                 <ChevronDown size={10} className="text-zinc-600 dark:text-zinc-400" />
               </button>
 
@@ -1566,7 +1547,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-zinc-900 dark:text-white">
-                              {getModelDisplayName(model.id)}
+                              {getModelDisplayName(model.id, model.id)}
                             </span>
                             {isLoaded && (
                               <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
