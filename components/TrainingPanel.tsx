@@ -3,6 +3,10 @@ import { Upload, Play, Square, FolderOpen, Save, FileJson, Zap, Database, Chevro
 import { EditableSlider } from './EditableSlider';
 import { ToggleSwitch } from './ToggleSwitch';
 import { TRAINING_FALLBACK_DIT_MODELS, getModelDisplayName } from '../lib/modelCatalog';
+import {
+  DEFAULT_TRAINING_GRADIENT_CHECKPOINTING,
+  isTrainingModelReadyOnPrimary,
+} from '../lib/trainingModelSelection';
 
 const VOCAL_LANGUAGE_VALUES = [
   { value: 'unknown', key: 'autoInstrumental' as const },
@@ -49,11 +53,9 @@ interface DisplaySample {
 
 interface TrainingPanelProps {
   onPlaySample?: (audioPath: string, title: string) => void;
-  isReinitializing?: boolean;
-  onReinitializingChange?: (value: boolean) => void;
 }
 
-export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isReinitializing: externalIsReinitializing, onReinitializingChange }) => {
+export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample }) => {
   const { t } = useI18n();
   const { token } = useAuth();
 
@@ -166,7 +168,9 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
   const [trainingSeed, setTrainingSeed] = useState(42);
   const [loraOutputDir, setLoraOutputDir] = useState('./lokr_output');
   const [useFP8, setUseFP8] = useState(false);
-  const [gradientCheckpointing, setGradientCheckpointing] = useState(false);
+  const [gradientCheckpointing, setGradientCheckpointing] = useState(
+    DEFAULT_TRAINING_GRADIENT_CHECKPOINTING
+  );
   const [trainingProgress, setTrainingProgress] = useState('');
   const [trainingLog, setTrainingLog] = useState('');
   const [isTraining, setIsTraining] = useState(false);
@@ -176,10 +180,6 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
   const [trainingStartTime, setTrainingStartTime] = useState<number | null>(null);
   const [currentEpoch, setCurrentEpoch] = useState(0);
   const [trainingStatus, setTrainingStatus] = useState<TrainingStatus | null>(null);
-  const [reinitMessage, setReinitMessage] = useState('');
-  // isReinitializing is lifted to parent (App) for cross-panel blocking
-  const isReinitializing = externalIsReinitializing ?? false;
-  const setIsReinitializing = (v: boolean) => onReinitializingChange?.(v);
 
   const trainingLogRef = useRef('');
   const showTensorboardRef = useRef(false);
@@ -489,8 +489,6 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
         if (!status.is_training) {
           setIsTraining(false);
           clearInterval(pollInterval);
-          // Auto-reinitialize inference components after training ends
-          void autoReinitialize();
         }
 
         // Update TensorBoard URL if available
@@ -1012,24 +1010,8 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
       setIframeKey((v) => v + 1);
       setTrainingStartTime(null);
       setCurrentEpoch(0);
-      // Auto-reinitialize inference components after stop
-      void autoReinitialize();
     } catch (error: any) {
       setTrainingProgress(`${t('error')}: ${error?.message || 'Failed to stop training'}`);
-    }
-  };
-
-  const autoReinitialize = async () => {
-    if (!token) return;
-    setIsReinitializing(true);
-    setReinitMessage('Reinitializing inference components...');
-    try {
-      const result = await modelApi.reinitialize(token);
-      setReinitMessage(result.message || 'Service reinitialized successfully');
-    } catch (error: any) {
-      setReinitMessage(`Reinitialize failed: ${error?.message || 'unknown error'}`);
-    } finally {
-      setIsReinitializing(false);
     }
   };
 
@@ -1057,9 +1039,10 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
     if (!token || isModelSwitching) return;
     setTrainingBaseModel(modelName);
     localStorage.setItem('ace-trainingBaseModel', modelName);
-    // Check if already loaded
+    // Training routes use the primary handler only; a model loaded in slot 2/3
+    // still requires a primary-slot switch before starting training.
     const info = availableBaseModels.find(m => m.name === modelName);
-    if (info?.is_loaded) return;
+    if (isTrainingModelReadyOnPrimary(info)) return;
     // Switch via /v1/init
     setIsModelSwitching(true);
     try {
@@ -1853,15 +1836,15 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
               <div className="flex gap-4">
                 <button
                   onClick={handleStartTraining}
-                  disabled={isTraining || isReinitializing}
+                  disabled={isTraining}
                   className={`flex-1 py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-all ${
-                    isTraining || isReinitializing
+                    isTraining
                       ? 'bg-zinc-300 dark:bg-zinc-700 text-zinc-500 cursor-not-allowed'
                       : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white'
                   }`}
                 >
                   <Play size={18} />
-                  {isReinitializing ? (t('reinitializing') || 'Reinitializing...') : t('startTraining')}
+                  {t('startTraining')}
                 </button>
                 <button
                   onClick={handleStopTraining}
@@ -1876,31 +1859,6 @@ export const TrainingPanel: React.FC<TrainingPanelProps> = ({ onPlaySample, isRe
                   {t('stopTraining')}
                 </button>
               </div>
-
-              {/* Auto-Reinitialize Status Banner */}
-              {(isReinitializing || reinitMessage) && (
-                <div className={`rounded-xl p-4 border-2 ${
-                  isReinitializing
-                    ? 'bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/30 dark:to-amber-950/30 border-yellow-300 dark:border-yellow-800 animate-pulse'
-                    : reinitMessage.includes('failed') || reinitMessage.includes('Error')
-                      ? 'bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-950/30 dark:to-pink-950/30 border-red-300 dark:border-red-800'
-                      : 'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border-green-300 dark:border-green-800'
-                }`}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">{isReinitializing ? '⏳' : reinitMessage.includes('failed') || reinitMessage.includes('Error') ? '❌' : '✅'}</span>
-                    <div>
-                      <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">
-                        {isReinitializing ? (t('reinitializing') || 'Restoring inference service...') : (t('reinitializeComplete') || 'Service Recovery')}
-                      </h4>
-                      <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
-                        {isReinitializing
-                          ? (t('reinitializingHint') || 'Reloading DiT/VAE/LLM components. Please wait before generating or training again.')
-                          : reinitMessage}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Training Progress */}
               {trainingProgress && trainingStatus && (() => {

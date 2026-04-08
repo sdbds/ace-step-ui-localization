@@ -135,7 +135,6 @@ function AppContent() {
 
   // UI State
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isReinitializing, setIsReinitializing] = useState(false);
   const [serverStats, setServerStats] = useState<ServerStats | null>(null);
   const [showRightSidebar, setShowRightSidebar] = useState(true);
   const [showLeftSidebar, setShowLeftSidebar] = useState(false);
@@ -1505,8 +1504,6 @@ function AppContent() {
       case 'training':
         return (
           <TrainingPanel
-            isReinitializing={isReinitializing}
-            onReinitializingChange={setIsReinitializing}
             onPlaySample={(audioPath: string, title: string) => {
               // Convert dataset audio path to playable URL
               // Audio paths from dataset can be relative (./datasets/...) or absolute paths
@@ -1557,7 +1554,6 @@ function AppContent() {
               <CreatePanel
                 onGenerate={handleGenerate}
                 isGenerating={isGenerating}
-                isReinitializing={isReinitializing}
                 initialData={reuseData}
                 createdSongs={songs}
                 pendingAudioSelection={pendingAudioSelection}

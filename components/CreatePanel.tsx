@@ -8,6 +8,11 @@ import type { ModelInfo, LmModelInfo, LoraAdapterInfo } from '../services/api';
 import { MAIN_STYLES, SUB_STYLES, ALL_STYLES } from '../data/genres';
 import { FALLBACK_DIT_MODELS, getModelDisplayName } from '../lib/modelCatalog';
 import {
+  isBaseOnlyTaskType,
+  isPureBaseDitModel,
+  isTurboDitModel,
+} from '../lib/modelCapabilities';
+import {
   REPAINT_MODE_OPTIONS,
   SUPPORTED_AUDIO_FORMATS,
   deriveRepaintModeFromStrength,
@@ -32,7 +37,6 @@ interface ReferenceTrack {
 interface CreatePanelProps {
   onGenerate: (params: GenerationParams) => void;
   isGenerating: boolean;
-  isReinitializing?: boolean;
   initialData?: { song: Song, timestamp: number } | null;
   createdSongs?: Song[];
   pendingAudioSelection?: { target: 'reference' | 'source'; url: string; title?: string } | null;
@@ -119,7 +123,6 @@ const VOCAL_LANGUAGE_KEYS = [
 export const CreatePanel: React.FC<CreatePanelProps> = ({
   onGenerate,
   isGenerating,
-  isReinitializing = false,
   initialData,
   createdSongs = [],
   pendingAudioSelection,
@@ -271,20 +274,6 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     }
     return FALLBACK_DIT_MODELS;
   }, [fetchedModels]);
-
-  // Check if model is a turbo variant
-  const isTurboModel = (modelId: string): boolean => {
-    return modelId.includes('turbo');
-  };
-
-  // Check if model is a pure base model (only base supports extract/lego/complete)
-  const isBaseModel = (modelId: string): boolean => {
-    return modelId.includes('base');
-  };
-
-  const isBaseOnlyTask = (task: string): boolean => {
-    return ['extract', 'lego', 'complete'].includes(task);
-  };
 
   // Genre selection state (cascading)
   // Two-level genre cascade states
@@ -480,6 +469,15 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     setLoraAdapterType(status.adapter_type ?? null);
     setLoraAdapters(status.adapters ?? []);
     setLoraScales(status.scales ?? {});
+  }, []);
+
+  const resetLoraState = useCallback(() => {
+    setLoraLoaded(false);
+    setLoraEnabled(false);
+    setLoraScale(1.0);
+    setLoraAdapterType(null);
+    setLoraAdapters([]);
+    setLoraScales({});
   }, []);
 
   // LoRA API handlers (multi-adapter)
@@ -767,6 +765,12 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
 
   const refreshLoraStatus = useCallback(async () => {
     if (!token) return;
+    if (!backendHealth?.modelsInitialized) {
+      if (isMountedRef.current) {
+        resetLoraState();
+      }
+      return;
+    }
     try {
       const status = await loraApi.getStatus(token);
       if (!isMountedRef.current) return;
@@ -774,7 +778,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     } catch {
       // ignore - backend may be starting
     }
-  }, [token, syncLoraState]);
+  }, [token, backendHealth?.modelsInitialized, syncLoraState, resetLoraState]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -791,8 +795,6 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         }
       };
       void attemptRefresh(0);
-
-      void refreshLoraStatus();
 
       // Fetch limits
       try {
@@ -1525,12 +1527,12 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                           setSelectedModel(model.id);
                           localStorage.setItem('ace-model', model.id);
                           // Auto-adjust parameters for non-turbo models
-                          if (!isTurboModel(model.id)) {
+                          if (!isTurboDitModel(model.id)) {
                             setInferenceSteps(20);
                             setUseAdg(true);
                           }
                           // Fallback base-only tasks when switching to non-base model
-                          if (!isBaseModel(model.id) && isBaseOnlyTask(taskType)) {
+                          if (!isPureBaseDitModel(model.id) && isBaseOnlyTaskType(taskType)) {
                             handleTaskTypeChange('text2music');
                           }
                           setShowModelMenu(false);
@@ -2791,9 +2793,9 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                 <option value="text2music">{t('textToMusic')}</option>
                 <option value="cover">{t('coverTask')}</option>
                 <option value="repaint">{t('repaintTask')}</option>
-                <option value="extract" disabled={!isBaseModel(selectedModel)}>{t('extractTask')}{!isBaseModel(selectedModel) ? ` (${t('requiresBaseModel')})` : ''}</option>
-                <option value="lego" disabled={!isBaseModel(selectedModel)}>{t('legoTask')}{!isBaseModel(selectedModel) ? ` (${t('requiresBaseModel')})` : ''}</option>
-                <option value="complete" disabled={!isBaseModel(selectedModel)}>{t('completeTask')}{!isBaseModel(selectedModel) ? ` (${t('requiresBaseModel')})` : ''}</option>
+                <option value="extract" disabled={!isPureBaseDitModel(selectedModel)}>{t('extractTask')}{!isPureBaseDitModel(selectedModel) ? ` (${t('requiresBaseModel')})` : ''}</option>
+                <option value="lego" disabled={!isPureBaseDitModel(selectedModel)}>{t('legoTask')}{!isPureBaseDitModel(selectedModel) ? ` (${t('requiresBaseModel')})` : ''}</option>
+                <option value="complete" disabled={!isPureBaseDitModel(selectedModel)}>{t('completeTask')}{!isPureBaseDitModel(selectedModel) ? ` (${t('requiresBaseModel')})` : ''}</option>
               </select>
             </div>
 
@@ -3366,17 +3368,15 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         <button
           onClick={handleGenerate}
           className="w-full h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all transform active:scale-[0.98] bg-gradient-to-r from-orange-500 to-pink-600 text-white shadow-lg hover:brightness-110"
-          disabled={isGenerating || !isAuthenticated || isReinitializing}
+          disabled={isGenerating || !isAuthenticated}
         >
           <Sparkles size={18} />
           <span>
-            {isReinitializing
-              ? (t('reinitializing') || 'Reinitializing...')
-              : isGenerating
-                ? t('generating')
-                : bulkCount > 1
-                  ? `${t('createButton')} ${bulkCount} ${t('jobs')} (${bulkCount * batchSize} ${t('variations')})`
-                  : `${t('createButton')}${batchSize > 1 ? ` (${batchSize} ${t('variations')})` : ''}`
+            {isGenerating
+              ? t('generating')
+              : bulkCount > 1
+                ? `${t('createButton')} ${bulkCount} ${t('jobs')} (${bulkCount * batchSize} ${t('variations')})`
+                : `${t('createButton')}${batchSize > 1 ? ` (${batchSize} ${t('variations')})` : ''}`
             }
           </span>
         </button>
